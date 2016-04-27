@@ -88,7 +88,8 @@ Options:\n")
       (info "Test options:\n" (with-out-str (pprint options)))
 
       ; Run test
-      (let [t (jepsen/run! (dc/test options))]
+      (let [t (jepsen/run! (dc/test (assoc options :ssh {:username "admin"
+                       :private-key-path "~/.ssh/id_rsa"})))]
         (System/exit (if (:valid? (:results t)) 0 1))))
 
     (catch Throwable t

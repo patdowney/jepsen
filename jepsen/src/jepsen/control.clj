@@ -9,9 +9,9 @@
 ; STATE STATE STATE STATE
 (def ^:dynamic *host*     "Current hostname"              nil)
 (def ^:dynamic *session*  "Current clj-ssh session"       nil)
-(def ^:dynamic *trace*    "Shall we trace commands?"      false)
+(def ^:dynamic *trace*    "Shall we trace commands?"      true)
 (def ^:dynamic *dir*      "Working directory"             "/")
-(def ^:dynamic *sudo*     "User to sudo to"               nil)
+(def ^:dynamic *sudo*     "User to sudo to"               "root")
 (def ^:dynamic *username* "Username"                      "root")
 (def ^:dynamic *password* "Password (for login and sudo)" "root")
 (def ^:dynamic *port*     "SSH listening port"            22)
