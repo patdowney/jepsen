@@ -82,6 +82,9 @@
   "Given a test, evaluates (f test node) in parallel on each node, with that
   node's SSH connection bound."
   [test f]
+  (info "--> sessions: " (:sessions test) )
+  (doseq [[name session] (:sessions test)]
+    (info "session:" name "/" (.getHost session) " alive:" (.isConnected session)))
   (dorun (pmap (fn [[node session]]
                  (control/with-session node session
                    (f test node)))

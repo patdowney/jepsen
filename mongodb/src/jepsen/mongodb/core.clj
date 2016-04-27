@@ -287,6 +287,7 @@
   (reify db/DB
     (setup! [_ test node]
       (doto node
+        (fn [x] (info "!!!!!!! setup node " x))
         (install! url)
         (configure! test)
         (start!)
