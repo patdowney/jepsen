@@ -30,5 +30,3 @@ bench/**
 */resources/datomic/download-key
 */resources/datomic/riak-transactor.properties
 /.nrepl-port
-*.iml
-*/.idea
