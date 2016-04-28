@@ -83,7 +83,9 @@
 (defn stop!
   "Stops Mongod"
   [node]
-  (cu/stop-daemon! "mongod" "/opt/mongodb/pidfile"))
+  (do
+    (c/su (c/exec :kill (c/lit "$(pgrep mongod)")))
+    (cu/stop-daemon! "mongod" "/opt/mongodb/pidfile")))
 
 (defn wipe!
   "Shuts down MongoDB and wipes data."

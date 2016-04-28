@@ -28,7 +28,7 @@
     :parse-fn #(keyword (clojure.string/lower-case %))]
 
    [nil "--pattern LOGPATTERN" "overrides default log4j pattern - see org.apache.log4j.PatternLayout"
-    :default "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [node=%X{node}, process=%X{process}] - %msg%n"]
+    :default "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [node=%X{node}, process=%X{process}] - %m%n"]
 
    ["-t" "--time-limit SECONDS"
     "Excluding setup and teardown, how long should tests run for?"
