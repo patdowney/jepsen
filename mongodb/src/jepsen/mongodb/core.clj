@@ -66,7 +66,8 @@
   [node test]
   (c/exec :echo (-> "mongod.conf" io/resource slurp
                     (str/replace #"%STORAGE_ENGINE%" (:storage-engine test))
-                    (str/replace #"%PROTOCOL_VERSION%" (:protocol-version test)))
+                    (str/replace #"%PROTOCOL_VERSION%" (:protocol-version test))
+                    (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern test)) "false" "true")))
           :> "/opt/mongodb/mongod.conf"))
 
 (defn start!
