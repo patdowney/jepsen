@@ -26,7 +26,8 @@
             [jepsen.generator :as generator]
             [jepsen.checker :as checker]
             [jepsen.client :as client]
-            [jepsen.store :as store])
+            [jepsen.store :as store]
+            [clj-logging-config.log4j :as log4j])
   (:import (java.util.concurrent CyclicBarrier)))
 
 (defn synchronize
@@ -86,8 +87,10 @@
   (doseq [[name session] (:sessions test)]
     (info "session:" name "/" (.getHost session) " alive:" (.isConnected session)))
   (dorun (pmap (fn [[node session]]
-                 (control/with-session node session
-                   (f test node)))
+                 (log4j/with-logging-context
+                   {:node node}
+                   (control/with-session node session
+                                         (f test node))))
                (:sessions test))))
 
 (defmacro with-os
@@ -123,60 +126,63 @@
   [test process client]
   (let [gen (:generator test)]
     (future
-      (with-thread-name (str "jepsen worker " process)
-        (info "Worker" process "starting")
-        (loop [process process]
-          ; Obtain an operation to execute
-          (when-let [op (generator/op gen test process)]
-            (let [op (assoc op
-                            :process process
-                            :time    (relative-time-nanos))]
-              ; Log invocation
-              (util/log-op op)
-              (conj-op! test op)
+      (with-thread-name
+        (str "jepsen worker " process)
+        (log4j/with-logging-context
+          {:process process}
+          (info "Worker" process "starting")
+          (loop [process process]
+            ; Obtain an operation to execute
+            (when-let [op (generator/op gen test process)]
+              (let [op (assoc op
+                         :process process
+                         :time (relative-time-nanos))]
+                ; Log invocation
+                (util/log-op op)
+                (conj-op! test op)
 
-              (recur
-                (try
-                  ; Evaluate operation
-                  (let [completion (-> (client/invoke! client test op)
-                                       (assoc :time (relative-time-nanos)))]
-                    (util/log-op completion)
+                (recur
+                  (try
+                    ; Evaluate operation
+                    (let [completion (-> (client/invoke! client test op)
+                                         (assoc :time (relative-time-nanos)))]
+                      (util/log-op completion)
 
-                    ; Sanity check
-                    (assert (= (:process op) (:process completion)))
-                    (assert (= (:f op)       (:f completion)))
+                      ; Sanity check
+                      (assert (= (:process op) (:process completion)))
+                      (assert (= (:f op) (:f completion)))
 
-                    ; Log completion
-                    (conj-op! test completion)
+                      ; Log completion
+                      (conj-op! test completion)
 
-                    (if (or (knossos/ok? completion) (knossos/fail? completion))
-                      ; The process is now free to attempt another execution.
-                      process
-                      ; Process hung; move on
-                      (+ process (:concurrency test))))
+                      (if (or (knossos/ok? completion) (knossos/fail? completion))
+                        ; The process is now free to attempt another execution.
+                        process
+                        ; Process hung; move on
+                        (+ process (:concurrency test))))
 
-                  (catch Throwable t
-                    ; At this point all bets are off. If the client or network
-                    ; or DB crashed before doing anything; this operation won't
-                    ; be a part of the history. On the other hand, the DB may
-                    ; have applied this operation and we *don't know* about it;
-                    ; e.g.  because of timeout.
-                    ;
-                    ; This process is effectively hung; it can not initiate a
-                    ; new operation without violating the single-threaded
-                    ; process constraint. We cycle to a new process identifier,
-                    ; and leave the invocation uncompleted in the history.
-                    (conj-op! test (assoc op
-                                          :type :info
-                                          :time  (relative-time-nanos)
-                                          :value (str "indeterminate: "
-                                                      (if (.getCause t)
-                                                        (.. t getCause
-                                                            getMessage)
-                                                        (.getMessage t)))))
-                    (warn t "Process" process "indeterminate")
-                    (+ process (:concurrency test))))))))
-        (info "Worker" process "done")))))
+                    (catch Throwable t
+                      ; At this point all bets are off. If the client or network
+                      ; or DB crashed before doing anything; this operation won't
+                      ; be a part of the history. On the other hand, the DB may
+                      ; have applied this operation and we *don't know* about it;
+                      ; e.g.  because of timeout.
+                      ;
+                      ; This process is effectively hung; it can not initiate a
+                      ; new operation without violating the single-threaded
+                      ; process constraint. We cycle to a new process identifier,
+                      ; and leave the invocation uncompleted in the history.
+                      (conj-op! test (assoc op
+                                       :type :info
+                                       :time (relative-time-nanos)
+                                       :value (str "indeterminate: "
+                                                   (if (.getCause t)
+                                                     (.. t getCause
+                                                         getMessage)
+                                                     (.getMessage t)))))
+                      (warn t "Process" process "indeterminate")
+                      (+ process (:concurrency test))))))))
+          (info "Worker" process "done"))))))
 
 (defn nemesis-worker
   "Starts the nemesis thread, which draws failures from the generator and
