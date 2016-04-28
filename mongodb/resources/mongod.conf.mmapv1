@@ -8,7 +8,7 @@ storage:
   journal:
     enabled: true
 #   commitIntervalMs: 1000 # might want to verify journal loss windows
-  engine: %STORAGE_ENGINE%
+  engine: mmapv1
   mmapv1:
     # Disable data file preallocation. We nuke the entire database between runs
     # so this improves startup speed.
@@ -18,4 +18,3 @@ storage:
 
 replication:
   replSetName: jepsen
-  enableMajorityReadConcern: %ENABLE_MAJORITY_READ_CONCERN%
