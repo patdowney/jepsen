@@ -46,28 +46,6 @@
        (catch com.mongodb.MongoSocketReadTimeoutException e#
          (assoc ~op :type error-type# :error :socket-read)))))
 
-(defn std-gen "generator with simple schedule"
-  [gen]
-  (gen/phases
-    (->> gen
-         (gen/delay 1)
-         (gen/time-limit 120))
-    (gen/clients
-      (->> gen
-           (gen/delay 1)
-           (gen/time-limit 30)))))
-
-(comment "removed for now"
-  (defn std-gen
-    "Takes a client generator and wraps it in a typical schedule and nemesis
-    causing failover."
-    [gen]
-    (->> gen
-         (gen/stagger 1)
-         (gen/nemesis
-           (gen/seq (cycle [(gen/sleep 30)
-                            {:type :info :f :stop}
-                            {:type :info :f :start}]))))))
 
 (defn test-
   "Constructs a test with the given name prefixed by 'mongodb ', merging any

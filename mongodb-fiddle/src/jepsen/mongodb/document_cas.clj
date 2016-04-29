@@ -104,26 +104,19 @@
 (defn r   [_ _] {:type :invoke, :f :read, :value nil})
 (defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5) (rand-int 5)]})
 
-(defn generator
-  []
-  (gen/mix [w r cas]))
 
 (defn test
-  "Document-level compare and set. Options are also passed through to
-  core/test-.
 
-  Special options:
-
-    :write-concern              Keyword for write concern level
-    :read-concern               Keyword for read concern level
-    :read-with-find-and-modify  Use findAndModify to ensure read safety
-    :time-limit                 How long do we run the test for?"
   [opts]
   (test- (str "doc cas"
               " r:" (name (:read-concern opts))
               " w:" (name (:write-concern opts)))
          (merge
-           {:client       (client opts)
-            :concurrency  10
-            :generator (std-gen (gen/reserve 5 (gen/mix [w cas cas]) r))}
+           {:client      (client opts)
+            :concurrency 100
+            ;:generator (->> (gen/reserve 5 (gen/mix [w cas cas]) r)
+            ;                (gen/time-limit (:time-limit opts)))
+            :generator   (->> r
+                              (gen/time-limit (:time-limit opts)))
+            }
            opts)))
