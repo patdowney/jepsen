@@ -28,6 +28,7 @@
 
 (defrecord Client [db-name
                    coll-name
+                   id
                    read-concern
                    write-concern
                    read-with-find-and-modify
@@ -41,42 +42,43 @@
                      (m/collection coll-name)
                      (m/with-read-concern  read-concern)
                      (m/with-write-concern write-concern))]
+      ; Create document
+      (m/upsert! coll {:_id id, :value nil})
 
       (assoc this :client client, :coll coll)))
 
   (invoke! [this test op]
     ; Reads are idempotent; we can treat their failure as an info.
     (with-errors op #{:read}
-      (let [id    (key (:value op))
-            value (val (:value op))]
-        (case (:f op)
-          :read (let [doc (if read-with-find-and-modify
-                            ; CAS read
-                            (m/read-with-find-and-modify coll id)
-                            ; Normal read
-                            (m/find-one coll id))]
-                  (assoc op
-                         :type  :ok
-                         :value (independent/tuple id (:value doc))))
+      (case (:f op)
+        :read (let [res
+                    ; Normal read
+                    (m/find-one coll id)]
+                (assoc op
+                  :type :ok
+                  :value (:value res)))
 
-          :write (let [res (m/upsert! coll {:_id id, :value value})]
-                   ; Note that modified-count could be zero, depending on the
-                   ; storage engine, if you perform a write the same as the
-                   ; current value.
-                   (assert (< (:matched-count res) 2))
-                   (assoc op :type :ok))
+        :write (let [res (m/replace! coll {:_id id, :value op})]
+                 (info :write-result (pr-str res))
+                 (assert (:acknowledged? res))
+                 ; Note that modified-count could be zero, depending on the
+                 ; storage engine, if you perform a write the same as the
+                 ; current value.
+                 (assert (= 1 (:matched-count res)))
+                 (assoc op :type :ok))
 
-          :cas   (let [[value value'] value
-                       res (m/cas! coll
-                                   {:_id id, :value value}
-                                   {:_id id, :value value'})]
-                   ; Check how many documents we actually modified.
-                   (condp = (:matched-count res)
-                     0 (assoc op :type :fail)
-                     1 (assoc op :type :ok)
-                     true (assoc op :type :info
-                                 :error (str "CAS: matched too many docs! "
-                                             res))))))))
+        :cas (let [[value value'] (:value op)
+                   res (m/cas! coll
+                               {:_id id, :value value}
+                               {:_id id, :value value'})]
+               ; Check how many documents we actually modified.
+               (cond
+                 (not (:acknowledged? res)) (assoc op :type :info, :error res)
+                 (= 0 (:matched-count res)) (assoc op :type :fail)
+                 (= 1 (:matched-count res)) (assoc op :type :ok)
+                 true (assoc op :type :info
+                                :error (str "CAS: matched too many docs! "
+                                            res)))))))
   (teardown! [_ test]
     (.close ^java.io.Closeable client)))
 
@@ -90,6 +92,7 @@
   [opts]
   (Client. "jepsen"
            "cas"
+           0
            (:read-concern opts)
            (:write-concern opts)
            (:read-with-find-and-modify opts)
@@ -97,9 +100,9 @@
            nil))
 
 ; Generators
-(defn w   [_ _] {:type :invoke, :f :write, :value {666 (rand-int 5)}})
-(defn r   [_ _] {:type :invoke, :f :read, :value {555 nil}})
-(defn cas [_ _] {:type :invoke, :f :cas, :value {777 [(rand-int 5) (rand-int 5)]}})
+(defn w   [_ _] {:type :invoke, :f :write, :value (rand-int 5)})
+(defn r   [_ _] {:type :invoke, :f :read, :value nil})
+(defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5) (rand-int 5)]})
 
 (defn generator
   []
@@ -121,24 +124,6 @@
               " w:" (name (:write-concern opts)))
          (merge
            {:client       (client opts)
-            :concurrency  100
-            ;:generator    (->> (independent/concurrent-generator
-            ;                     10
-            ;                     (range)
-            ;                     (fn [k]
-            ;                       (->> (gen/mix [w cas cas])
-            ;                            (gen/reserve 5 (if (:no-reads opts)
-            ;                                             (gen/mix [w cas cas])
-            ;                                             r))
-            ;                            (gen/time-limit 30))))
-            ;                   std-gen
-            ;                   (gen/time-limit (:time-limit opts)))
-            :generator (->> (generator)
-                            (gen/clients)
-                            (gen/delay 1)
-                            (gen/time-limit 1000))
-            :model        (model/cas-register)
-            :checker      (checker/compose
-                            {                               ; :linear (independent/checker checker/linearizable)
-                             :perf   (checker/perf)})}
+            :concurrency  10
+            :generator (std-gen (gen/reserve 5 (gen/mix [w cas cas]) r))}
            opts)))

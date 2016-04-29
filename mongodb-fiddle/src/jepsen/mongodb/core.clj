@@ -46,6 +46,17 @@
        (catch com.mongodb.MongoSocketReadTimeoutException e#
          (assoc ~op :type error-type# :error :socket-read)))))
 
+(defn std-gen "generator with simple schedule"
+  [gen]
+  (gen/phases
+    (->> gen
+         (gen/delay 1)
+         (gen/time-limit 120))
+    (gen/clients
+      (->> gen
+           (gen/delay 1)
+           (gen/time-limit 30)))))
+
 (comment "removed for now"
   (defn std-gen
     "Takes a client generator and wraps it in a typical schedule and nemesis
@@ -62,7 +73,6 @@
   "Constructs a test with the given name prefixed by 'mongodb ', merging any
   given options. Special options for Mongo:
 
-  :tarball            HTTP URL of a tarball to install
   :time-limit         How long do we run the test for?
   :storage-engine     Storage engine to use
   :protocol-version   Replication protocol version"
