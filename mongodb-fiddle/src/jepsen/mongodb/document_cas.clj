@@ -97,9 +97,9 @@
            nil))
 
 ; Generators
-(defn w   [_ _] {:type :invoke, :f :write, :value [666 (rand-int 5)]})
-(defn r   [_ _] {:type :invoke, :f :read})
-(defn cas [_ _] {:type :invoke, :f :cas, :value [777 [(rand-int 5) (rand-int 5)]]})
+(defn w   [_ _] {:type :invoke, :f :write, :value {666 (rand-int 5)}})
+(defn r   [_ _] {:type :invoke, :f :read, :value {555 nil}})
+(defn cas [_ _] {:type :invoke, :f :cas, :value {777 [(rand-int 5) (rand-int 5)]}})
 
 (defn generator
   []
