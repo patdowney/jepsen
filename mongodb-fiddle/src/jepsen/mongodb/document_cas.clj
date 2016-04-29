@@ -101,6 +101,10 @@
 (defn r   [_ _] {:type :invoke, :f :read})
 (defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5) (rand-int 5)]})
 
+(defn generator
+  []
+  (gen/mix [w r cas]))
+
 (defn test
   "Document-level compare and set. Options are also passed through to
   core/test-.
@@ -118,19 +122,23 @@
          (merge
            {:client       (client opts)
             :concurrency  100
-            :generator    (->> (independent/concurrent-generator
-                                 10
-                                 (range)
-                                 (fn [k]
-                                   (->> (gen/mix [w cas cas])
-                                        (gen/reserve 5 (if (:no-reads opts)
-                                                         (gen/mix [w cas cas])
-                                                         r))
-                                        (gen/time-limit 30))))
-                               std-gen
-                               (gen/time-limit (:time-limit opts)))
+            ;:generator    (->> (independent/concurrent-generator
+            ;                     10
+            ;                     (range)
+            ;                     (fn [k]
+            ;                       (->> (gen/mix [w cas cas])
+            ;                            (gen/reserve 5 (if (:no-reads opts)
+            ;                                             (gen/mix [w cas cas])
+            ;                                             r))
+            ;                            (gen/time-limit 30))))
+            ;                   std-gen
+            ;                   (gen/time-limit (:time-limit opts)))
+            :generator (->> (generator)
+                            (gen/clients)
+                            (gen/delay 1)
+                            (gen/time-limit 1000))
             :model        (model/cas-register)
             :checker      (checker/compose
-                            {:linear (independent/checker checker/linearizable)
+                            {                               ; :linear (independent/checker checker/linearizable)
                              :perf   (checker/perf)})}
            opts)))
