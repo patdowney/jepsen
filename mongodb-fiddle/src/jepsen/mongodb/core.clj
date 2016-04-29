@@ -72,5 +72,5 @@
            :name            (str "mongodb-fiddle " name )
            :os              debian/os
            :checker         (checker/perf)
-           :nemesis         (nemesis/noop))
+           :nemesis         nemesis/noop)
     opts))
