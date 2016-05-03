@@ -54,9 +54,10 @@
   (reify Checker
     (check [_ test model history opts]
       (if-let [perfdumpfile (:perfdumpfile test)]
-        (info "running custom history dump to " perfdumpfile)
-        (with-open [out (io/writer perfdumpfile)]
-           (cheshire/generate-stream history out {:pretty true})))
+        (do
+          (info "running custom history dump to " perfdumpfile)
+          (with-open [out (io/writer perfdumpfile)]
+            (cheshire/generate-stream (util/history->latencies history) out {:pretty true}))))
       {:valid? true})))
 
 (defn checkers [] (checker/compose {:perf-dump (perf-dump)
