@@ -10,7 +10,8 @@
                  [clj-logging-config "1.9.12"]
                  [jepsen "0.1.1-SNAPSHOT"]
                  [org.mongodb/mongodb-driver "3.2.2"]
-                 [levand/immuconf "0.1.0"]]
+                 [levand/immuconf "0.1.0"]
+                 [cheshire "5.6.1"]]
   :main jepsen.mongodb.runner
   :aot [jepsen.mongodb.runner
         clojure.tools.logging.impl])

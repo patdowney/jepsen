@@ -21,8 +21,10 @@
             [jepsen.os.debian :as debian]
             [jepsen.mongodb.mongo :as m]
             [knossos [core :as knossos]
-                     [model :as model]])
-  (:import (clojure.lang ExceptionInfo)))
+                     [model :as model]]
+            [cheshire.core :as cheshire])
+  (:import (clojure.lang ExceptionInfo)
+           (jepsen.checker Checker)))
 
 
 (defmacro with-errors
@@ -46,6 +48,20 @@
        (catch com.mongodb.MongoSocketReadTimeoutException e#
          (assoc ~op :type error-type# :error :socket-read)))))
 
+(defn perf-dump
+  "Spits out performance stats"
+  []
+  (reify Checker
+    (check [_ test model history opts]
+      (if-let [perfdumpfile (:perfdumpfile test)]
+        (info "running custom history dump to " perfdumpfile)
+        (with-open [out (io/writer perfdumpfile)]
+           (cheshire/generate-stream history out {:pretty true})))
+      {:valid? true})))
+
+(defn checkers [] (checker/compose {:perf-dump (perf-dump)
+                            :latency-graph (checker/latency-graph)
+                            :rate-graph    (checker/rate-graph)}))
 
 (defn test-
   "Constructs a test with the given name prefixed by 'mongodb ', merging any
@@ -59,6 +75,6 @@
     (assoc tests/noop-test
            :name            (str "mongodb-fiddle " name )
            :os              debian/os
-           :checker         (checker/perf)
+           :checker         (checkers)
            :nemesis         nemesis/noop)
     opts))
