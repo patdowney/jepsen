@@ -117,6 +117,7 @@
             ;:generator (->> (gen/reserve 5 (gen/mix [w cas cas]) r)
             ;                (gen/time-limit (:time-limit opts)))
             :generator   (->> r
+                              (gen/clients)
                               (gen/time-limit (:time-limit opts)))
             }
            opts)))
