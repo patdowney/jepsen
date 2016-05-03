@@ -26,6 +26,281 @@
   (:import (clojure.lang ExceptionInfo)
            (jepsen.checker Checker)))
 
+(def username "mongodb")
+
+(defn install!
+  "Installs a tarball from an HTTP URL"
+  [node url]
+  ; Add user
+  (cu/ensure-user! username)
+
+  ; Download tarball
+  (let [local-file (nth (re-find #"file://(.+)" url) 1)
+        file       (or local-file (c/cd "/tmp" (str "/tmp/" (cu/wget! url))))]
+    (try
+      (c/cd "/opt"
+            ; Clean up old dir
+            (c/exec :rm :-rf "mongodb")
+            ; Extract and rename
+            (c/exec :tar :xvf file)
+            (c/exec :mv (c/lit "mongodb-linux-*") "mongodb")
+            ; Create data dir
+            (c/exec :mkdir :-p "mongodb/data")
+            ; Permissions
+            (c/exec :chown :-R (str username ":" username) "mongodb"))
+      (catch RuntimeException e
+        (condp re-find (.getMessage e)
+          #"tar: Unexpected EOF"
+          (if local-file
+            ; Nothing we can do to recover here
+            (throw (RuntimeException.
+                     (str "Local tarball " local-file " on node " (name node)
+                          " is corrupt: unexpected EOF.")))
+            (do (info "Retrying corrupt tarball download")
+                (c/exec :rm :-rf file)
+                (install! node url)))
+
+          ; Throw by default
+          (throw e))))))
+
+(defn configure!
+  "Deploy configuration files to the node."
+  [node test]
+  (c/exec :echo (-> (str "mongod.conf." (:storage-engine test)) io/resource slurp
+                    (str/replace #"%STORAGE_ENGINE%" (:storage-engine test))
+                    (str/replace #"%PROTOCOL_VERSION%" (:protocol-version test))
+                    (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern test)) "false" "true")))
+          :> "/opt/mongodb/mongod.conf"))
+
+(defn start!
+  "Starts Mongod"
+  [node]
+  (c/sudo username
+          (cu/start-daemon! {:logfile "/opt/mongodb/stdout.log"
+                             :pidfile "/opt/mongodb/pidfile"
+                             :chdir   "/opt/mongodb"}
+                            "/opt/mongodb/bin/mongod"
+                            :--config "/opt/mongodb/mongod.conf")))
+
+(defn stop!
+  "Stops Mongod"
+  [node]
+  (do
+    (c/su (c/exec :kill (c/lit "$(pgrep mongod)")))
+    (cu/stop-daemon! "mongod" "/opt/mongodb/pidfile")))
+
+(defn wipe!
+  "Shuts down MongoDB and wipes data."
+  [node]
+  (stop! node)
+  (info node "deleting data files")
+  (c/su
+    (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log"))))
+
+(defn mongo!
+  "Run a Mongo shell command. Spits back an unparsable kinda-json string,
+  because what else would 'printjson' do?"
+  [cmd]
+  (-> (c/exec :mongo :--quiet :--eval (str "printjson(" cmd ")"))))
+
+;; Cluster setup
+
+(defn replica-set-status
+  "Returns the current replica set status."
+  [conn]
+  (m/admin-command! conn :replSetGetStatus 1))
+
+(defn replica-set-initiate!
+  "Initialize a replica set on a node."
+  [conn config]
+  (try
+    (m/admin-command! conn :replSetInitiate config)
+    (catch ExceptionInfo e
+      (condp re-find (get-in (ex-data e) [:result "errmsg"])
+        ; Some of the time (but not all the time; why?) Mongo returns this error
+        ; from replsetinitiate, which is, as far as I can tell, not actually an
+        ; error (?)
+        #"Received replSetInitiate - should come online shortly"
+        nil
+
+        ; This is a hint we should back off and retry; one of the nodes probably
+        ; isn't fully alive yet.
+        #"need all members up to initiate, not ok"
+        (do (info "not all members alive yet; retrying replica set initiate"
+                  (Thread/sleep 1000)
+                  (replica-set-initiate! conn config)))
+
+        ; Or by default re-throw
+        (throw e)))))
+
+(defn replica-set-master?
+  "What's this node's replset role?"
+  [conn]
+  (m/admin-command! conn :isMaster 1))
+
+(defn replica-set-config
+  "Returns the current replset config."
+  [conn]
+  (m/admin-command! conn :replSetGetConfig 1))
+
+(defn replica-set-reconfigure!
+  "Apply new configuration for a replica set."
+  [conn conf]
+  (m/admin-command! conn :replSetReconfig conf))
+
+(defn node+port->node
+  "Take a mongo \"n1:27107\" string and return just the node as a keyword:
+  :n1."
+  [s]
+  (keyword ((re-find #"(\w+?):" s) 1)))
+
+(defn primaries
+  "What nodes does this conn think are primaries?"
+  [conn]
+  (->> (replica-set-status conn)
+       :members
+       (filter #(= "PRIMARY" (:stateStr %)))
+       (map :name)
+       (map node+port->node)))
+
+(defn primary
+  "Which single node does this conn think the primary is? Throws for multiple
+  primaries, cuz that sounds like a fun and interesting bug, haha."
+  [conn]
+  (let [ps (primaries conn)]
+    (when (< 1 (count ps))
+      (throw (IllegalStateException.
+               (str "Multiple primaries known to "
+                    conn
+                    ": "
+                    ps))))
+
+    (first ps)))
+
+(defn await-conn
+  "Block until we can connect to the given node. Returns a connection to the
+  node."
+  [node]
+  (timeout (* 100 1000)
+           (throw (ex-info "Timed out trying to connect to MongoDB"
+                           {:node node}))
+           (loop []
+             (or (try
+                   (let [conn (m/client node)]
+                     (try
+                       (.first (.listDatabaseNames conn))
+                       conn
+                       ; Don't leak clients when they fail
+                       (catch Throwable t
+                         (.close conn)
+                         (throw t))))
+                   ;                   (catch com.mongodb.MongoServerSelectionException e
+                   ;                     nil))
+                   ; Todo: figure out what Mongo 3.x throws when servers
+                   ; aren't ready yet
+                   )
+                 ; If we aren't ready, sleep and retry
+                 (do
+                   (Thread/sleep 1000)
+                   (recur))))))
+
+(defn await-primary
+  "Block until a primary is known to the current node."
+  [conn]
+  (while (not (primary conn))
+    (Thread/sleep 1000)))
+
+(defn await-join
+  "Block until all nodes in the test are known to this connection's replset
+  status"
+  [test conn]
+  (while (try (not= (set (:nodes test))
+                    (->> (replica-set-status conn)
+                         :members
+                         (map :name)
+                         (map node+port->node)
+                         set))
+              (catch ExceptionInfo e
+                (if (re-find #"should come online shortly"
+                             (get-in (ex-data e) [:result "errmsg"]))
+                  true
+                  (throw e))))
+    (Thread/sleep 1000)))
+
+(defn target-replica-set-config
+  "Generates the config for a replset in a given test."
+  [test]
+  (assert (integer? (:protocol-version test)))
+  {:_id "jepsen"
+   :protocolVersion (:protocol-version test)
+   :members (->> test
+                 :nodes
+                 (map-indexed (fn [i node]
+                                {:_id  i
+                                 :host (str (name node) ":27017")})))})
+
+(defn join!
+  "Join nodes into a replica set. Blocks until any primary is visible to all
+  nodes which isn't really what we want but oh well."
+  [node test]
+  ; Gotta have all nodes online for this. Delightfully, Mongo won't actually
+  ; bind to the port until well *after* the init script startup process
+  ; returns. This would be fine, except that  if a node isn't ready to join,
+  ; the initiating node will just hang indefinitely, instead of figuring out
+  ; that the node came online a few seconds later.
+  (.close (await-conn node))
+  (jepsen/synchronize test)
+
+  ; Initiate RS
+  (when (= node (jepsen/primary test))
+    (with-open [conn (await-conn node)]
+      (info node "Initiating replica set")
+      (replica-set-initiate! conn (target-replica-set-config test))
+
+      (info node "Jepsen primary waiting for cluster join")
+      (await-join test conn)
+      (info node "Jepsen primary waiting for mongo election")
+      (await-primary conn)
+      (info node "Primary ready.")))
+
+  ; For reasons I really don't understand, you have to prevent other nodes
+  ; from checking the replset status until *after* we initiate the replset on
+  ; the primary--so we insert a barrier here to make sure other nodes don't
+  ; wait until primary initiation is complete.
+  (jepsen/synchronize test)
+
+  ; For other reasons I don't understand, you *have* to open a new set of
+  ; connections after replset initation. I have a hunch that this happens
+  ; because of a deadlock or something in mongodb itself, but it could also
+  ; be a client connection-closing-detection bug.
+
+  ; Amusingly, we can't just time out these operations; the client appears to
+  ; swallow thread interrupts and keep on doing, well, something. FML.
+  (with-open [conn (await-conn node)]
+    (info node "waiting for cluster join")
+    (await-join test conn)
+
+    (info node "waiting for primary")
+    (await-primary conn)
+
+    (info node "primary is" (primary conn))
+    (jepsen/synchronize test)))
+
+(defn db
+  "MongoDB for a particular HTTP URL"
+  [url]
+  (reify db/DB
+    (setup! [_ test node]
+      (doto node
+        (fn [x] (info "!!!!!!! setup node " x))
+        (install! url)
+        (configure! test)
+        (start!)
+        (join! test)))
+
+    (teardown! [_ test node]
+      (wipe! node))))
+
 
 (defmacro with-errors
   "Takes an invocation operation, a set of idempotent operation functions which
@@ -76,6 +351,7 @@
     (assoc tests/noop-test
            :name            (str "mongodb-fiddle " name )
            :os              debian/os
+           :db              (db (:tarball opts))
            :checker         (checkers)
            :nemesis         nemesis/noop)
     opts))
