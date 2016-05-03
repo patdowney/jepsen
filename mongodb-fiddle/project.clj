@@ -9,7 +9,8 @@
                  [log4j/log4j "1.2.17"]
                  [clj-logging-config "1.9.12"]
                  [jepsen "0.1.1-SNAPSHOT"]
-                 [org.mongodb/mongodb-driver "3.2.2"]]
+                 [org.mongodb/mongodb-driver "3.2.2"]
+                 [levand/immuconf "0.1.0"]]
   :main jepsen.mongodb.runner
   :aot [jepsen.mongodb.runner
         clojure.tools.logging.impl])
