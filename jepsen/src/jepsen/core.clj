@@ -114,11 +114,14 @@
   "Wraps body in DB setup and teardown."
   [test & body]
   `(try
+     (trace "with-db cycling db on all nodes")
      (on-nodes ~test (partial db/cycle! (:db ~test)))
      (setup-primary! ~test)
 
      ~@body
+     (catch Exception e# (do (warn e# "with-db Caught exception:") (throw e#)))
      (finally
+       (trace "with-db finally - tear down db on all nodes")
        (on-nodes ~test (partial db/teardown! (:db ~test))))))
 
 (defn worker
