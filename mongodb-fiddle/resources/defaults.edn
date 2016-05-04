@@ -3,10 +3,20 @@
  :logpattern "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [node=%X{node}, process=%X{process}] - %m%n"
 
  :time-limit 60
- :write-concern :majority
- :read-concern :majority
- :storage-engine "wiredTiger"
- :protocol-version 1
- :tarball "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian71-3.3.1.tgz"
 
+ :mongodb {
+           :install true
+           :configure true
+           :username "mongodb"
+           :tarball "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian71-3.3.1.tgz"
+           :write-concern :majority
+           :read-concern :majority
+           :storage-engine "wiredTiger"
+           :protocol-version 1
+           :client-options {
+                           :max-wait-time 60000
+                           :connect-timeout 60000
+                           :socket-timeout 60000
+                           }
+           }
  }

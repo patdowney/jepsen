@@ -29,7 +29,7 @@ Options file must (currently) be an edn file i.e. clojure-like syntax
 It will take the file in resources/defaults.edn as defaults")
 
 (defn log-config! [options]
-  (log4j/set-logger! "jepsen" :level (:loglevel options) :pattern (:pattern options)))
+  (log4j/set-logger! "jepsen" :level (:loglevel options) :pattern (:logpattern options)))
 
 (defn -main
   [& args]

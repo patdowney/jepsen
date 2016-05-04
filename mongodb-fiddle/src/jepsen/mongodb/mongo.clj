@@ -28,27 +28,28 @@
 
 (defn ^MongoClientOptions default-client-options
   "MongoDB client options."
-  []
+  [{:keys [max-wait-time connect-timeout socket-timeout] :as mongodb-config}]
   (.build
     (doto (MongoClientOptions/builder)
-      (.maxWaitTime     20000)
-      (.connectTimeout  5000)
-      (.socketTimeout   10000))))
+      (.maxWaitTime max-wait-time)
+      (.connectTimeout connect-timeout)
+      (.socketTimeout socket-timeout))))
 
 (defn client
   "Creates a new Mongo client."
-  [node]
-  (MongoClient. (name node) (default-client-options)))
+  [mongodb-config node]
+  (MongoClient. (name node) (default-client-options (:client-options mongodb-config))))
 
 (defn cluster-client
   "Returns a mongoDB connection for all nodes in a test."
   [test]
   (MongoClient. (->> test :nodes (map #(ServerAddress. (name %))))
-                (default-client-options)))
+                (default-client-options (:client-options (:mongodb test)))))
 
 (defn ^MongoDatabase db
   "Gets a Mongo database from a client."
   [^MongoClient client db]
+  (trace "getting database for client " client " db:" db)
   (.getDatabase client db))
 
 (defn ^MongoCollection collection
@@ -153,6 +154,7 @@
 (defn admin-command!
   "Runs a command on the admin database."
   [client & command]
+  (trace "running admin command:" command)
   (apply run-command! (db client "admin") command))
 
 (defn find-one

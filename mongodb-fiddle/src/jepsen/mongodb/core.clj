@@ -3,7 +3,7 @@
                      [string :as str]]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
-            [clojure.tools.logging :refer [debug info warn]]
+            [clojure.tools.logging :refer [debug info warn trace]]
             [clojure.walk :as walk]
             [jepsen [core      :as jepsen]
                     [db        :as db]
@@ -26,17 +26,16 @@
   (:import (clojure.lang ExceptionInfo)
            (jepsen.checker Checker)))
 
-(def username "mongodb")
-
 (defn install!
   "Installs a tarball from an HTTP URL"
-  [node url]
+  [node {:keys [tarball username] :as mongodb-config}]
   ; Add user
+  (trace "Installing mongo")
   (cu/ensure-user! username)
 
   ; Download tarball
-  (let [local-file (nth (re-find #"file://(.+)" url) 1)
-        file       (or local-file (c/cd "/tmp" (str "/tmp/" (cu/wget! url))))]
+  (let [local-file (nth (re-find #"file://(.+)" tarball) 1)
+        file       (or local-file (c/cd "/tmp" (str "/tmp/" (cu/wget! tarball))))]
     (try
       (c/cd "/opt"
             ; Clean up old dir
@@ -58,24 +57,29 @@
                           " is corrupt: unexpected EOF.")))
             (do (info "Retrying corrupt tarball download")
                 (c/exec :rm :-rf file)
-                (install! node url)))
+                (install! node mongodb-config)))
 
           ; Throw by default
           (throw e))))))
 
 (defn configure!
   "Deploy configuration files to the node."
-  [node test]
-  (c/exec :echo (-> (str "mongod.conf." (:storage-engine test)) io/resource slurp
-                    (str/replace #"%STORAGE_ENGINE%" (:storage-engine test))
-                    (str/replace #"%PROTOCOL_VERSION%" (:protocol-version test))
-                    (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern test)) "false" "true")))
+  ; TODO - is this the normal way to determine read concerns? Seems strange to be in mongo config
+  [node mongodb-config]
+  (trace "configuring mongo on" node)
+  (c/exec :echo (-> (str "mongod.conf." (:storage-engine mongodb-config))
+                    io/resource
+                    slurp
+                    (str/replace #"%STORAGE_ENGINE%" (:storage-engine mongodb-config))
+                    (str/replace #"%PROTOCOL_VERSION%" (:protocol-version mongodb-config))
+                    (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern mongodb-config)) "false" "true")))
           :> "/opt/mongodb/mongod.conf"))
 
 (defn start!
   "Starts Mongod"
-  [node]
-  (c/sudo username
+  [node mongodb-config]
+  (trace "starting mongod on" node)
+  (c/sudo (:username mongodb-config)
           (cu/start-daemon! {:logfile "/opt/mongodb/stdout.log"
                              :pidfile "/opt/mongodb/pidfile"
                              :chdir   "/opt/mongodb"}
@@ -84,16 +88,16 @@
 
 (defn stop!
   "Stops Mongod"
-  [node]
-  (do
-    (c/su (c/exec :kill (c/lit "$(pgrep mongod)")))
-    (cu/stop-daemon! "mongod" "/opt/mongodb/pidfile")))
+  [node] ; this works now, as long as you just use pidfile.
+  ; TODO - patch jepsen to not use killall?
+  (trace "stopping mongod on" node)
+  (cu/stop-daemon! "/opt/mongodb/pidfile"))
 
 (defn wipe!
   "Shuts down MongoDB and wipes data."
   [node]
+  (trace "wiping mongo data on" node)
   (stop! node)
-  (info node "deleting data files")
   (c/su
     (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log"))))
 
@@ -180,15 +184,15 @@
 (defn await-conn
   "Block until we can connect to the given node. Returns a connection to the
   node."
-  [node]
+  [mongodb-config node]
   (timeout (* 100 1000)
            (throw (ex-info "Timed out trying to connect to MongoDB"
                            {:node node}))
            (loop []
              (or (try
-                   (let [conn (m/client node)]
+                   (let [conn (m/client mongodb-config node)]
                      (try
-                       (.first (.listDatabaseNames conn))
+                       (trace "connected to mongodb - dbs: " (pr-str (seq (.listDatabaseNames conn))))
                        conn
                        ; Don't leak clients when they fail
                        (catch Throwable t
@@ -230,30 +234,32 @@
 (defn target-replica-set-config
   "Generates the config for a replset in a given test."
   [test]
-  (assert (integer? (:protocol-version test)))
-  {:_id "jepsen"
-   :protocolVersion (:protocol-version test)
-   :members (->> test
-                 :nodes
-                 (map-indexed (fn [i node]
-                                {:_id  i
-                                 :host (str (name node) ":27017")})))})
+  (assert (integer? (:protocol-version (:mongodb test))))
+  {:_id             "jepsen"
+   :protocolVersion (:protocol-version (:mongodb test))
+   :settings { :heartbeatTimeoutSecs 20 }
+   :members         (->> test
+                         :nodes
+                         (map-indexed (fn [i node]
+                                        {:_id  i
+                                         :host (str (name node) ":27017")})))})
 
 (defn join!
   "Join nodes into a replica set. Blocks until any primary is visible to all
   nodes which isn't really what we want but oh well."
   [node test]
+  (debug "joining nodes into replica set")
   ; Gotta have all nodes online for this. Delightfully, Mongo won't actually
   ; bind to the port until well *after* the init script startup process
   ; returns. This would be fine, except that  if a node isn't ready to join,
   ; the initiating node will just hang indefinitely, instead of figuring out
   ; that the node came online a few seconds later.
-  (.close (await-conn node))
+  (.close (await-conn (:mongodb test) node))
   (jepsen/synchronize test)
 
   ; Initiate RS
   (when (= node (jepsen/primary test))
-    (with-open [conn (await-conn node)]
+    (with-open [conn (await-conn (:mongodb test) node)]
       (info node "Initiating replica set")
       (replica-set-initiate! conn (target-replica-set-config test))
 
@@ -276,7 +282,7 @@
 
   ; Amusingly, we can't just time out these operations; the client appears to
   ; swallow thread interrupts and keep on doing, well, something. FML.
-  (with-open [conn (await-conn node)]
+  (with-open [conn (await-conn (:mongodb test) node)]
     (info node "waiting for cluster join")
     (await-join test conn)
 
@@ -287,18 +293,22 @@
     (jepsen/synchronize test)))
 
 (defn db
-  "MongoDB for a particular HTTP URL"
-  [url]
+  "MongoDB for a particular configuration"
+  [{:keys [tarball username] :as mongodb-config}]
   (reify db/DB
     (setup! [_ test node]
-      (doto node
-        (fn [x] (info "!!!!!!! setup node " x))
-        (install! url)
-        (configure! test)
-        (start!)
-        (join! test)))
+      (trace "setup! on " node)
+      (if (:install mongodb-config) (install! node mongodb-config)
+                             (wipe! node))                  ; stop and wipe
+      ; TODO - should we be allowing users to not even stop Mongo?
+      ; be good to read the docs in more detail for relevant versions, see what
+      ; we can do without a restart.
+      (if (:configure mongodb-config) (configure! node mongodb-config))
+      (start! node mongodb-config)
+      (join! node test))
 
     (teardown! [_ test node]
+      (trace "teardown! on " node)
       (wipe! node))))
 
 
@@ -351,7 +361,7 @@
     (assoc tests/noop-test
            :name            (str "mongodb-fiddle " name )
            :os              debian/os
-           :db              (db (:tarball opts))
+           :db              (db (:mongodb opts))
            :checker         (checkers)
            :nemesis         nemesis/noop)
     opts))

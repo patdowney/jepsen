@@ -93,9 +93,9 @@
   (Client. "jepsen"
            "cas"
            0
-           (:read-concern opts)
-           (:write-concern opts)
-           (:read-with-find-and-modify opts)
+           (:read-concern (:mongodb opts))
+           (:write-concern (:mongodb opts))
+           (:read-with-find-and-modify (:mongodb opts))
            nil
            nil))
 
@@ -109,8 +109,8 @@
 
   [opts]
   (test- (str "doc cas"
-              " r:" (name (:read-concern opts))
-              " w:" (name (:write-concern opts)))
+              " r:" (name (:read-concern (:mongodb opts)))
+              " w:" (name (:write-concern (:mongodb opts))))
          (merge
            {:client      (client opts)
             :concurrency 100
