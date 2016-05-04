@@ -339,9 +339,10 @@
   (reify Checker
     (check [_ test model history opts]
       (if-let [perfdumpfile (:perfdumpfile test)]
-        (do
-          (info "running custom history dump to " perfdumpfile)
-          (with-open [out (io/writer perfdumpfile)]
+        (let [filename (store/path! test (:subdirectory opts)
+                                    perfdumpfile)]
+          (info "running custom history dump to " filename)
+          (with-open [out (io/writer filename)]
             (cheshire/generate-stream (util/history->latencies history) out {:pretty true}))))
       {:valid? true})))
 

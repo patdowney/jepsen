@@ -26,6 +26,10 @@
             [jepsen.mongodb.mongo :as m])
   (:import (clojure.lang ExceptionInfo)))
 
+(defn with-timestamp "add low-fi timestamp for easier graphing"
+  [op]
+  (assoc op :timestamp (System/currentTimeMillis)))
+
 (defrecord Client [db-name
                    coll-name
                    id
@@ -54,9 +58,9 @@
         :read (let [res
                     ; Normal read
                     (m/find-one coll id)]
-                (assoc op
-                  :type :ok
-                  :value (:value res)))
+                (with-timestamp (assoc op
+                                  :type :ok
+                                  :value (:value res))))
 
         :write (let [res (m/replace! coll {:_id id, :value op})]
                  (info :write-result (pr-str res))
@@ -65,20 +69,21 @@
                  ; storage engine, if you perform a write the same as the
                  ; current value.
                  (assert (= 1 (:matched-count res)))
-                 (assoc op :type :ok))
+                 (with-timestamp (assoc op :type :ok)))
 
         :cas (let [[value value'] (:value op)
                    res (m/cas! coll
                                {:_id id, :value value}
                                {:_id id, :value value'})]
                ; Check how many documents we actually modified.
-               (cond
-                 (not (:acknowledged? res)) (assoc op :type :info, :error res)
-                 (= 0 (:matched-count res)) (assoc op :type :fail)
-                 (= 1 (:matched-count res)) (assoc op :type :ok)
-                 true (assoc op :type :info
-                                :error (str "CAS: matched too many docs! "
-                                            res)))))))
+               (with-timestamp
+                 (cond
+                   (not (:acknowledged? res)) (assoc op :type :info, :error res)
+                   (= 0 (:matched-count res)) (assoc op :type :fail)
+                   (= 1 (:matched-count res)) (assoc op :type :ok)
+                   true (assoc op :type :info
+                                  :error (str "CAS: matched too many docs! "
+                                              res))))))))
   (teardown! [_ test]
     (.close ^java.io.Closeable client)))
 
@@ -100,9 +105,9 @@
            nil))
 
 ; Generators
-(defn w   [_ _] {:type :invoke, :f :write, :value (rand-int 5)})
-(defn r   [_ _] {:type :invoke, :f :read, :value nil})
-(defn cas [_ _] {:type :invoke, :f :cas, :value [(rand-int 5) (rand-int 5)]})
+(defn w   [_ _] (with-timestamp {:type :invoke, :f :write, :value (rand-int 5)}))
+(defn r   [_ _] (with-timestamp {:type :invoke, :f :read, :value nil}))
+(defn cas [_ _] (with-timestamp {:type :invoke, :f :cas, :value [(rand-int 5) (rand-int 5)]}))
 
 
 (defn test
