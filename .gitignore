@@ -30,3 +30,4 @@ bench/**
 */resources/datomic/download-key
 */resources/datomic/riak-transactor.properties
 /.nrepl-port
+.DS_Store
