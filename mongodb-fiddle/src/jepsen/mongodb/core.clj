@@ -96,15 +96,17 @@
   ; TODO - patch jepsen to not use killall?
   (trace "stopping mongod on" node)
   (c/sudo (:username mongodb-config)
-          (cu/stop-daemon! "/opt/mongodb/pidfile")))
+          (c/exec :kill (c/lit "$(pgrep mongod)"))
+          ; not needed: (cu/stop-daemon! "/opt/mongodb/pidfile")
+          ))
 
 (defn wipe!
   "Shuts down MongoDB and wipes data."
   [node mongodb-config]
   (trace "wiping mongo data on" node)
   (stop! node mongodb-config)
-  (c/su
-    (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log"))))
+  (c/sudo (:username mongodb-config)
+          (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log"))))
 
 (defn mongo!
   "Run a Mongo shell command. Spits back an unparsable kinda-json string,
