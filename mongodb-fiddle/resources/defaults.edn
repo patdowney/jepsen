@@ -2,7 +2,9 @@
  :loglevel :info
  :logpattern "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [node=%X{node}, process=%X{process}] - %m%n"
 
- :time-limit 60
+ :trace-ssh false
+
+ :time-limit 300
 
  :mongodb {
            :install true

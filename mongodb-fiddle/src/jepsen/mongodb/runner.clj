@@ -8,10 +8,11 @@
             [clj-logging-config.log4j :as log4j]
             [clojure.string :as str]
             [jepsen.mongodb [core :as m]
-                            [mongo :as client]
-                            [document-cas :as dc]]
+             [mongo :as client]
+             [document-cas :as dc]]
             [jepsen.core :as jepsen]
-            [immuconf.config :as config]))
+            [immuconf.config :as config]
+            [jepsen.control :as control]))
 
 
 (def usage
@@ -47,8 +48,9 @@ It will take the file in resources/defaults.edn as defaults")
       (info "Test options:\n" (with-out-str (pprint options)))
 
       ; Run test
-      (let [t (jepsen/run! (dc/test options))]
-        (System/exit (if (:valid? (:results t)) 0 1))))
+      (binding [control/*trace* (:trace-ssh options)]
+        (let [t (jepsen/run! (dc/test options))]
+          (System/exit (if (:valid? (:results t)) 0 1)))))
 
     (catch Throwable t
       (fatal t "Oh jeez, I'm sorry, Jepsen broke. Here's why:")

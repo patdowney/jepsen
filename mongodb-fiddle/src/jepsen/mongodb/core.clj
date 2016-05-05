@@ -1,28 +1,30 @@
 (ns jepsen.mongodb.core
   (:require [clojure [pprint :refer :all]
-                     [string :as str]]
+             [string :as str]]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :refer [debug info warn trace spy]]
             [clojure.walk :as walk]
-            [jepsen [core      :as jepsen]
-                    [db        :as db]
-                    [util      :as util :refer [meh timeout]]
-                    [control   :as c :refer [|]]
-                    [client    :as client]
-                    [checker   :as checker]
-                    [generator :as gen]
-                    [nemesis   :as nemesis]
-                    [store     :as store]
-                    [report    :as report]
-                    [tests     :as tests]]
-            [jepsen.control [net :as net]
-                            [util :as cu]]
+            [jepsen [core :as jepsen]
+             [db :as db]
+             [util :as util :refer [meh timeout]]
+             [control :as c :refer [|]]
+             [client :as client]
+             [checker :as checker]
+             [generator :as gen]
+             [nemesis :as nemesis]
+             [store :as store]
+             [report :as report]
+             [tests :as tests]]
+            [jepsen.control :refer [su]]
+            [jepsen.control.util :as cu]
+            [jepsen.control.net :as net]
             [jepsen.os.debian :as debian]
             [jepsen.mongodb.mongo :as m]
             [knossos [core :as knossos]
-                     [model :as model]]
-            [cheshire.core :as cheshire])
+             [model :as model]]
+            [cheshire.core :as cheshire]
+)
   (:import (clojure.lang ExceptionInfo)
            (jepsen.checker Checker)))
 
@@ -31,36 +33,37 @@
   [node {:keys [tarball username] :as mongodb-config}]
   ; Add user
   (trace "Installing mongo")
-  (cu/ensure-user! username)
+  (su
+    (cu/ensure-user! username)
 
-  ; Download tarball
-  (let [local-file (nth (re-find #"file://(.+)" tarball) 1)
-        file       (or local-file (c/cd "/tmp" (str "/tmp/" (cu/wget! tarball))))]
-    (try
-      (c/cd "/opt"
-            ; Clean up old dir
-            (c/exec :rm :-rf "mongodb")
-            ; Extract and rename
-            (c/exec :tar :xvf file)
-            (c/exec :mv (c/lit "mongodb-linux-*") "mongodb")
-            ; Create data dir
-            (c/exec :mkdir :-p "mongodb/data")
-            ; Permissions
-            (c/exec :chown :-R (str username ":" username) "mongodb"))
-      (catch RuntimeException e
-        (condp re-find (.getMessage e)
-          #"tar: Unexpected EOF"
-          (if local-file
-            ; Nothing we can do to recover here
-            (throw (RuntimeException.
-                     (str "Local tarball " local-file " on node " (name node)
-                          " is corrupt: unexpected EOF.")))
-            (do (info "Retrying corrupt tarball download")
-                (c/exec :rm :-rf file)
-                (install! node mongodb-config)))
+    ; Download tarball
+    (let [local-file (nth (re-find #"file://(.+)" tarball) 1)
+          file (or local-file (c/cd "/tmp" (str "/tmp/" (cu/wget! tarball))))]
+      (try
+        (c/cd "/opt"
+              ; Clean up old dir
+              (c/exec :rm :-rf "mongodb")
+              ; Extract and rename
+              (c/exec :tar :xvf file)
+              (c/exec :mv (c/lit "mongodb-linux-*") "mongodb")
+              ; Create data dir
+              (c/exec :mkdir :-p "mongodb/data")
+              ; Permissions
+              (c/exec :chown :-R (str username ":" username) "mongodb"))
+        (catch RuntimeException e
+          (condp re-find (.getMessage e)
+            #"tar: Unexpected EOF"
+            (if local-file
+              ; Nothing we can do to recover here
+              (throw (RuntimeException.
+                       (str "Local tarball " local-file " on node " (name node)
+                            " is corrupt: unexpected EOF.")))
+              (do (info "Retrying corrupt tarball download")
+                  (c/exec :rm :-rf file)
+                  (install! node mongodb-config)))
 
-          ; Throw by default
-          (throw e))))))
+            ; Throw by default
+            (throw e)))))))
 
 (defn configure!
   "Deploy configuration files to the node."

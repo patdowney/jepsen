@@ -1,7 +1,8 @@
 {
  :loglevel :trace
+ :trace-ssh true
 
- :nodes [:n1 :n2]
+ :nodes [:n1 :n2 :n3 :n4 :n5]
 
  :perfdumpfile "perfdump.json"
 
