@@ -325,17 +325,19 @@
     @history))
 
 (defn log-results
-  "Logs info about the results of a test to stdout, and returns test."
+  "Logs info about the results of a test, and returns test."
   [test]
-  (info (str
-          (if (:valid? (:results test))
-            "Everything looks good! ヽ(‘ー`)ノ"
-            "Analysis invalid! (ﾉಥ益ಥ）ﾉ ┻━┻")
-          "\n\n"
-          (with-out-str
-            (pprint (:results test)))
-          (when (:error (:results test))
-            (str "\n\n" (:error (:results test))))))
+  (let [is-valid (:valid? (:results test))
+        log-level (if is-valid :info :warn)]
+    (log log-level (str
+            (if is-valid
+              "Everything looks good! ヽ(‘ー`)ノ"
+              "Analysis invalid! (ﾉಥ益ಥ）ﾉ ┻━┻")
+            "\n\n"
+            (with-out-str
+              (pprint (:results test)))
+            (when (:error (:results test))
+              (str "\n\n" (:error (:results test)))))))
   test)
 
 (defn run!
