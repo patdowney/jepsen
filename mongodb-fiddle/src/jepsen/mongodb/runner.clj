@@ -9,7 +9,8 @@
             [clojure.string :as str]
             [jepsen.mongodb [core :as m]
              [mongo :as client]
-             [document-cas :as dc]]
+             [document-cas :as dc]
+             [simple-client :as sc]]
             [jepsen.core :as jepsen]
             [immuconf.config :as config]
             [jepsen.control :as control]))
@@ -49,7 +50,7 @@ It will take the file in resources/defaults.edn as defaults")
 
       ; Run test
       (binding [control/*trace* (:trace-ssh options)]
-        (let [t (jepsen/run! (dc/test options))]
+        (let [t (jepsen/run! (sc/test options))]
           (System/exit (if (:valid? (:results t)) 0 1)))))
 
     (catch Throwable t
