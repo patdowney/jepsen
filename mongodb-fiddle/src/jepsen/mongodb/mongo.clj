@@ -104,18 +104,24 @@
           (Document.)
           m))
 
+(def document->map)
+
+(defn- document->map-reducer [m [k v]]
+  (assoc m
+    (keyword k)
+    (cond (instance? Document v) (document->map v)
+          (and (instance? List v)
+               (not (empty? v))
+               (instance? Document (first v))) (map document->map v) ;only works if lists are all docs or all primitives. lists of lists are bad.
+          true                   v)))
+
 (defn document->map
   "Converts a document back into a map."
   [^Document doc]
   (when-not (nil? doc)
     (->> doc
          .entrySet
-         (reduce (fn [m [k v]]
-                   (assoc m
-                          (keyword k)
-                          (cond (instance? Document v) (document->map v)
-                                (instance? List v)     (map document->map v)
-                                true                   v)))
+         (reduce document->map-reducer
                  {}))))
 
 (defn create-collection!
@@ -221,3 +227,19 @@
             (Thread/sleep (rand-int 100))
             (retry))
         (throw e)))))
+
+(defn update!
+  "Update a document identified by a document's :_id."
+  [^MongoCollection coll id updates]
+  (info "----> updating with:"  updates)
+  (let [doc (document updates)
+        _ (info "doc:" (prn-str doc))
+        resdoc (-> coll
+                (.updateOne (Filters/eq "_id" id)
+                            doc)
+                )
+        _ (info "res:" (prn-str resdoc))
+        res (update-result->map resdoc)]
+    (info "result:" res)
+    res))
+

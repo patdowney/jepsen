@@ -96,17 +96,19 @@
   ; TODO - patch jepsen to not use killall?
   (trace "stopping mongod on" node)
   (c/sudo (:username mongodb-config)
-          (c/exec :kill (c/lit "$(pgrep mongod)"))
+          (meh (c/exec :kill (c/lit "$(pgrep mongod)")))
           ; not needed: (cu/stop-daemon! "/opt/mongodb/pidfile")
           ))
 
 (defn wipe!
-  "Shuts down MongoDB and wipes data."
-  [node mongodb-config]
-  (trace "wiping mongo data on" node)
-  (stop! node mongodb-config)
-  (c/sudo (:username mongodb-config)
-          (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log"))))
+  "Shuts down MongoDB and wipes log files - and optionally data files"
+  ([node mongodb-config] (wipe! node mongodb-config false))
+  ([node mongodb-config with-data]
+   (trace "wiping mongo data on" node)
+   (stop! node mongodb-config)
+   (c/sudo (:username mongodb-config)
+           (if with-data (c/exec :rm :-rf (c/lit "/opt/mongodb/data/*")))
+           (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log")))))
 
 (defn mongo!
   "Run a Mongo shell command. Spits back an unparsable kinda-json string,
@@ -307,7 +309,7 @@
       (trace "setup! on " node)
       (if (:install mongodb-config)
         (install! node mongodb-config)
-        (wipe! node mongodb-config))                  ; stop and wipe
+        (wipe! node mongodb-config true))                  ; stop and wipe
       ; TODO - should we be allowing users to not even stop Mongo?
       ; be good to read the docs in more detail for relevant versions, see what
       ; we can do without a restart.
