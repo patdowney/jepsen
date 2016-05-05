@@ -118,13 +118,10 @@
                               (r/filter #(= :read (:f %)))
                               (r/map :value)
                               (reduce (fn [_ x] x) nil))]
-        (warn "attempts:" (pr-str attempts))
 
         (if-not final-read-l
           {:valid? false
            :error  "Set was never read"})
-
-        (warn "final read l :" (pr-str final-read-l))
 
         (let [final-read  (into #{} final-read-l)
 

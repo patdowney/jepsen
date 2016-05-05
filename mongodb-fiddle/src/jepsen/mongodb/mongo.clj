@@ -231,15 +231,8 @@
 (defn update!
   "Update a document identified by a document's :_id."
   [^MongoCollection coll id updates]
-  (info "----> updating with:"  updates)
-  (let [doc (document updates)
-        _ (info "doc:" (prn-str doc))
-        resdoc (-> coll
-                (.updateOne (Filters/eq "_id" id)
-                            doc)
-                )
-        _ (info "res:" (prn-str resdoc))
-        res (update-result->map resdoc)]
-    (info "result:" res)
-    res))
+  (-> coll
+         (.updateOne (Filters/eq "_id" id)
+                     (document updates))
+         update-result->map))
 
