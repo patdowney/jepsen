@@ -70,13 +70,14 @@
   ; TODO - is this the normal way to determine read concerns? Seems strange to be in mongo config
   [node mongodb-config]
   (trace "configuring mongo on" node)
-  (c/exec :echo (-> (str "mongod.conf." (:storage-engine mongodb-config))
-                    io/resource
-                    slurp
-                    (str/replace #"%STORAGE_ENGINE%" (:storage-engine mongodb-config))
-                    (str/replace #"%PROTOCOL_VERSION%" (:protocol-version mongodb-config))
-                    (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern mongodb-config)) "false" "true")))
-          :> "/opt/mongodb/mongod.conf"))
+  (c/sudo (:username mongodb-config)
+          (c/exec :echo (-> (str "mongod.conf." (:storage-engine mongodb-config))
+                            io/resource
+                            slurp
+                            (str/replace #"%STORAGE_ENGINE%" (:storage-engine mongodb-config))
+                            (str/replace #"%PROTOCOL_VERSION%" (:protocol-version mongodb-config))
+                            (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern mongodb-config)) "false" "true")))
+                  :> "/opt/mongodb/mongod.conf")))
 
 (defn start!
   "Starts Mongod"
@@ -91,16 +92,17 @@
 
 (defn stop!
   "Stops Mongod"
-  [node] ; this works now, as long as you just use pidfile.
+  [node mongodb-config] ; this works now, as long as you just use pidfile.
   ; TODO - patch jepsen to not use killall?
   (trace "stopping mongod on" node)
-  (cu/stop-daemon! "/opt/mongodb/pidfile"))
+  (c/sudo (:username mongodb-config)
+          (cu/stop-daemon! "/opt/mongodb/pidfile")))
 
 (defn wipe!
   "Shuts down MongoDB and wipes data."
-  [node]
+  [node mongodb-config]
   (trace "wiping mongo data on" node)
-  (stop! node)
+  (stop! node mongodb-config)
   (c/su
     (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log"))))
 
@@ -297,12 +299,13 @@
 
 (defn db
   "MongoDB for a particular configuration"
-  [{:keys [tarball username] :as mongodb-config}]
+  [mongodb-config]
   (reify db/DB
     (setup! [_ test node]
       (trace "setup! on " node)
-      (if (:install mongodb-config) (install! node mongodb-config)
-                             (wipe! node))                  ; stop and wipe
+      (if (:install mongodb-config)
+        (install! node mongodb-config)
+        (wipe! node mongodb-config))                  ; stop and wipe
       ; TODO - should we be allowing users to not even stop Mongo?
       ; be good to read the docs in more detail for relevant versions, see what
       ; we can do without a restart.
@@ -312,7 +315,7 @@
 
     (teardown! [_ test node]
       (trace "teardown! on " node)
-      (wipe! node))))
+      (wipe! node mongodb-config))))
 
 
 (defmacro with-errors
