@@ -1,6 +1,8 @@
 {
+ :scenario "default"
+
  :loglevel :info
- :logpattern "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [node=%X{node}, process=%X{process}] - %m%n"
+ :logpattern "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [scenario=%X{scenario}, run=%X{run-id}] - %m%n"
 
  :trace-ssh false
 

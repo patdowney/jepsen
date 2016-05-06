@@ -15,6 +15,9 @@
             [immuconf.config :as config]
             [jepsen.control :as control]))
 
+(defn random-string [length]
+  (let [ascii-codes (concat (range 48 58) (range 66 91) (range 97 123))]
+    (apply str (repeatedly length #(char (rand-nth ascii-codes))))))
 
 (def usage
   "Usage: java -jar jepsen.mongodb.jar path_to_options_file
@@ -31,7 +34,8 @@ Options file must (currently) be an edn file i.e. clojure-like syntax
 It will take the file in resources/defaults.edn as defaults")
 
 (defn log-config! [options]
-  (log4j/set-logger! "jepsen" :level (:loglevel options) :pattern (:logpattern options)))
+  (log4j/set-loggers! "jepsen" {:level (:loglevel options) :pattern (:logpattern options)}
+                      "org.mongodb" {:level :warn :pattern (:logpattern options)}))
 
 (defn -main
   [& args]
@@ -45,13 +49,14 @@ It will take the file in resources/defaults.edn as defaults")
     (let [options (config/load "resources/defaults.edn" (first args))]
 
       (log-config! options)
+      (log4j/with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
 
-      (info "Test options:\n" (with-out-str (pprint options)))
+        (info "Test options:\n" (with-out-str (pprint options)))
 
-      ; Run test
-      (binding [control/*trace* (:trace-ssh options)]
-        (let [t (jepsen/run! (sc/test options))]
-          (System/exit (if (:valid? (:results t)) 0 1)))))
+        ; Run test
+        (binding [control/*trace* (:trace-ssh options)]
+          (let [t (jepsen/run! (sc/test options))]
+            (System/exit (if (:valid? (:results t)) 0 1))))))
 
     (catch Throwable t
       (fatal t "Oh jeez, I'm sorry, Jepsen broke. Here's why:")
