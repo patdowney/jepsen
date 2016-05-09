@@ -8,7 +8,7 @@
 
  :perfdumpfile "perfdump.json"
 
- :ssh {:username "username"}
+ :ssh {:username #or [#env SSH_USER "username"] }
 
  :time-limit 20
 

@@ -12,7 +12,7 @@
              [document-cas :as dc]
              [simple-client :as sc]]
             [jepsen.core :as jepsen]
-            [immuconf.config :as config]
+            [aero.core :refer [read-config]]
             [jepsen.control :as control]))
 
 (defn random-string [length]
@@ -37,6 +37,12 @@ It will take the file in resources/defaults.edn as defaults")
   (log4j/set-loggers! "jepsen" {:level (:loglevel options) :pattern (:logpattern options)}
                       "org.mongodb" {:level :warn :pattern (:logpattern options)}))
 
+(defn merge-overwrite
+  [v1 v2]
+  (if (and (associative? v1) (associative? v2))
+    (merge-with merge-overwrite v1 v2)
+    v2))
+
 (defn -main
   [& args]
   (try
@@ -46,7 +52,9 @@ It will take the file in resources/defaults.edn as defaults")
         (println usage)
         (System/exit 0)))
 
-    (let [options (config/load "resources/defaults.edn" (first args))]
+    (let [default-options (read-config "resources/defaults.edn")
+          custom-options (read-config (first args))
+          options (merge-with merge-overwrite default-options custom-options)]
 
       (log-config! options)
       (log4j/with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}

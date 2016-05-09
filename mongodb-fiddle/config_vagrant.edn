@@ -1,20 +1,20 @@
 {
- :scenario "vagrant experiments"
- :loglevel :info
+ :scenario     "vagrant experiments"
+ :loglevel     :info
 
- :trace-ssh false
+ :trace-ssh    false
 
- :nodes [:n1]
+ :nodes        [:n1]
 
  :perfdumpfile "perfdump.json"
 
- :ssh {:username "root" :password "root"}
+ :ssh          {:username #or [#env SSH_USER "root"] :password "root"}
 
- :time-limit 10
+ :time-limit   10
 
- :mongodb {
-           :install true
-           :configure true
-           }
+ :mongodb      {
+                :install   true
+                :configure true
+                }
 
  }
