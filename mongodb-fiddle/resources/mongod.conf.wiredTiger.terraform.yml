@@ -1,0 +1,21 @@
+systemLog:
+  destination: syslog
+#  logAppend: true
+#  path: /opt/mongodb/mongod.log
+
+storage:
+  dbPath: /var/lib/mongo
+  journal:
+    enabled: true
+#   commitIntervalMs: 1000 # might want to verify journal loss windows
+  engine: wiredTiger
+  mmapv1:
+    # Disable data file preallocation. We nuke the entire database between runs
+    # so this improves startup speed.
+    preallocDataFiles: false
+    # Reduce journal size from 1G to 128M
+    smallFiles: true
+
+replication:
+  replSetName: jepsen
+  enableMajorityReadConcern: %ENABLE_MAJORITY_READ_CONCERN%

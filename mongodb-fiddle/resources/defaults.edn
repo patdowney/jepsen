@@ -8,15 +8,21 @@
 
  :time-limit 300
 
+ :os-flavour :debian                                                ; options :debian or :null
+
  :mongodb {
+           :flavour :original                                 ; currently supports ':original' and ':terraform'
            :install true
            :configure true
            :username "mongodb"
            :tarball "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian71-3.3.1.tgz"
+           :conf-file "mongod.conf.wiredTiger.yml"
+           :conf-replacements {
+                               "%ENABLE_MAJORITY_READ_CONCERN%" "true"
+                               }
            :write-concern :majority
            :read-concern :majority
-           :storage-engine "wiredTiger"
-           :protocol-version 1
+           :protocol-version 1                              ; note only relevant in mongo 3?
            :client-options {
                            :max-wait-time 60000
                            :connect-timeout 60000

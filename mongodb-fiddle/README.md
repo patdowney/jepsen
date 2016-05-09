@@ -23,7 +23,9 @@ usage is all config file driven now.
 
 ## TODO
 
-Would like to use schema to validate configs, help avoid typos
+* Would like to use schema to validate configs, help avoid typos
+* can we poll for replication working as per: http://stackoverflow.com/questions/25137283/eval-inline-mongodb-replica-set-config?rq=1  - or is that what jepsen is already doing?
+* re-enable protocol version setting
 
 ## License
 
