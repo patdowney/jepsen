@@ -37,6 +37,7 @@
                    coll]
   client/Client
   (setup! [this test node]
+     (info "setting up client on " node )
     (let [client (m/cluster-client test)
           coll   (-> client
                      (m/db db-name)
@@ -179,8 +180,8 @@
                                 gen/clients))
             :checker     (checker/compose
                            {:perf-dump (perf-dump)
-                            :latency-graph (checker/latency-graph)
-                            :rate-graph    (checker/rate-graph)
+                            ;:latency-graph (checker/latency-graph)
+                            ;:rate-graph    (checker/rate-graph)
                             :details  (check-sets)})
             }
            opts)))

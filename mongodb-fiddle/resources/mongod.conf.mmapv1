@@ -1,10 +1,10 @@
 systemLog:
-  destination: file
-  logAppend: true
-  path: /opt/mongodb/mongod.log
+  destination: syslog
+#  logAppend: true
+#  path: /var/opt/mongodb/mongod.log
 
 storage:
-  dbPath: /opt/mongodb/data
+  dbPath: /var/lib/mongo
   journal:
     enabled: true
 #   commitIntervalMs: 1000 # might want to verify journal loss windows

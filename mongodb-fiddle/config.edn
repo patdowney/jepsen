@@ -1,11 +1,18 @@
 {
- :loglevel :trace
+ :loglevel :info
  :trace-ssh true
 
- :nodes [:n1 :n2 :n3 :n4 :n5]
+ :nodes [:mongo-0.us-east-1a.i.jpkot.net :mongo-1.us-east-1a.i.jpkot.net :mongo-2.us-east-1a.i.jpkot.net]
 
  :perfdumpfile "perfdump.json"
 
- :ssh {:username "admin"
-       :private-key-path "~/.ssh/id_rsa"}
+ :ssh {:username "username"}
+
+ :time-limit 20
+
+ :mongodb {
+   :install false
+   :username "mongod"
  }
+}
+

@@ -20,7 +20,8 @@
             [jepsen.control.util :as cu]
             [jepsen.control.net :as net]
             [jepsen.os.debian :as debian]
-            [jepsen.mongodb.mongo :as m]
+            [jepsen.mongodb [mongo :as m]
+              [null_os :as null_os]]
             [knossos [core :as knossos]
              [model :as model]]
             [cheshire.core :as cheshire]
@@ -70,25 +71,23 @@
   ; TODO - is this the normal way to determine read concerns? Seems strange to be in mongo config
   [node mongodb-config]
   (trace "configuring mongo on" node)
-  (c/sudo (:username mongodb-config)
+  (c/su
           (c/exec :echo (-> (str "mongod.conf." (:storage-engine mongodb-config))
                             io/resource
                             slurp
                             (str/replace #"%STORAGE_ENGINE%" (:storage-engine mongodb-config))
                             (str/replace #"%PROTOCOL_VERSION%" (:protocol-version mongodb-config))
                             (str/replace #"%ENABLE_MAJORITY_READ_CONCERN%" (if (= :local (:read-concern mongodb-config)) "false" "true")))
-                  :> "/opt/mongodb/mongod.conf")))
+                  :> "/etc/mongod.conf")))
 
 (defn start!
   "Starts Mongod"
   [node mongodb-config]
   (trace "starting mongod on" node)
   (c/sudo (:username mongodb-config)
-          (cu/start-daemon! {:logfile "/opt/mongodb/stdout.log"
-                             :pidfile "/opt/mongodb/pidfile"
-                             :chdir   "/opt/mongodb"}
-                            "/opt/mongodb/bin/mongod"
-                            :--config "/opt/mongodb/mongod.conf")))
+          (c/exec "/usr/bin/mongod"
+                  :--config "/etc/mongod.conf"
+                  :--fork)))
 
 (defn stop!
   "Stops Mongod"
@@ -97,6 +96,7 @@
   (trace "stopping mongod on" node)
   (c/sudo (:username mongodb-config)
           (meh (c/exec :kill (c/lit "$(pgrep mongod)")))
+(Thread/sleep 5000)
           ; not needed: (cu/stop-daemon! "/opt/mongodb/pidfile")
           ))
 
@@ -107,8 +107,8 @@
    (trace "wiping mongo data on" node)
    (stop! node mongodb-config)
    (c/sudo (:username mongodb-config)
-           (if with-data (c/exec :rm :-rf (c/lit "/opt/mongodb/data/*")))
-           (c/exec :rm :-rf (c/lit "/opt/mongodb/*.log")))))
+           (if with-data (c/exec :rm :-rf (c/lit "/var/lib/mongo/*")))
+           (c/exec :rm :-rf (c/lit "/var/log/mongodb/*.log")))))
 
 (defn mongo!
   "Run a Mongo shell command. Spits back an unparsable kinda-json string,
@@ -165,7 +165,7 @@
   "Take a mongo \"n1:27107\" string and return just the node as a keyword:
   :n1."
   [s]
-  (keyword ((re-find #"(\w+?):" s) 1)))
+  (keyword ((re-find #"([\w\.-]+?):" s) 1)))
 
 (defn primaries
   "What nodes does this conn think are primaries?"
@@ -392,7 +392,7 @@
   (merge
     (assoc tests/noop-test
            :name            (str "mongodb-fiddle " name )
-           :os              debian/os
+           :os              null_os/null_os
            :db              (db (:mongodb opts))
            :checker         (checkers)
            :nemesis         nemesis/noop)
