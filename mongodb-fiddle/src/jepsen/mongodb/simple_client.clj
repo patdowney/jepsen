@@ -165,6 +165,7 @@
          (merge
            {:client      (client opts)
             :concurrency 100
+            ;:generator   (gen/clients (gen/each (gen/seq [{:type :invoke, :f :add, :value :a}])))
             :generator   (gen/phases
                            (->> (range)
                                 (map (partial array-map
@@ -182,6 +183,6 @@
                            {:perf-dump (perf-dump)
                             ;:latency-graph (checker/latency-graph)
                             ;:rate-graph    (checker/rate-graph)
-                            :details  (check-sets)})
+                            :details   (check-sets)})
             }
            opts)))

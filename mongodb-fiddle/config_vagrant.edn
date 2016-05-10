@@ -1,8 +1,8 @@
 {
  :scenario     "vagrant experiments"
- :loglevel     :info
+ :loglevel     :trace
 
- :trace-ssh    false
+ :trace-ssh    true
 
  :nodes        [:n1]
 
@@ -13,7 +13,7 @@
  :time-limit   10
 
  :mongodb      {
-                :install   true
+                :install   false
                 :configure true
                 }
 

@@ -4,16 +4,18 @@
 
  :os-flavour :null
 
- :nodes [:mongo-0.us-east-1a.i.jpkot.net :mongo-1.us-east-1a.i.jpkot.net :mongo-2.us-east-1a.i.jpkot.net]
+ :nodes [:mongo-3.2.6_0.us-east-1a.i.jpkot.net :mongo-3.2.6_1.us-east-1a.i.jpkot.net :mongo-3.2.6_2.us-east-1a.i.jpkot.net :mongo-3.2.6_3.us-east-1a.i.jpkot.net :mongo-3.2.6_4.us-east-1a.i.jpkot.net]
 
  :perfdumpfile "perfdump.json"
 
- :ssh {:username #or [#env SSH_USER "username"] }
+ :ssh {:username #or [#env SSH_USER "username"]
+       :strict-host-key-checking false }
 
  :time-limit 20
 
  :mongodb {
            :flavour :terraform
+           :conf-file "mongod.conf.wiredTiger.terraform.yml"
 
            :install false
            :username "mongod"
