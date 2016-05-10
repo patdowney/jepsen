@@ -1,5 +1,5 @@
 {
- :loglevel :trace
+ ; note log level must now be set by modifying logback.groovy - it's loaded at start time, and logs to console and file
  :trace-ssh true
 
  :nodes [:n1 :n2 :n3 :n4 :n5]

@@ -1,6 +1,5 @@
 {
  :scenario     "vagrant experiments"
- :loglevel     :trace
 
  :trace-ssh    true
 

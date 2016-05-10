@@ -5,7 +5,6 @@
   (:require [clojure.pprint :refer [pprint]]
             [clojure.tools.cli :as cli]
             [clojure.tools.logging :refer :all]
-            [clj-logging-config.log4j :as log4j]
             [clojure.string :as str]
             [jepsen.mongodb [core :as m]
              [mongo :as client]
@@ -13,7 +12,8 @@
              [simple-client :as sc]]
             [jepsen.core :as jepsen]
             [aero.core :refer [read-config]]
-            [jepsen.control :as control]))
+            [jepsen.control :as control]
+            [jepsen.mongodb.log-context :refer [with-logging-context]]))
 
 (defn random-string [length]
   (let [ascii-codes (concat (range 48 58) (range 66 91) (range 97 123))]
@@ -33,9 +33,6 @@ Options file must (currently) be an edn file i.e. clojure-like syntax
 
 It will take the file in resources/defaults.edn as defaults")
 
-(defn log-config! [options]
-  (log4j/set-loggers! "jepsen" {:level (:loglevel options) :pattern (:logpattern options)}
-                      "org.mongodb" {:level :warn :pattern (:logpattern options)}))
 
 (defn merge-overwrite
   [v1 v2]
@@ -55,9 +52,8 @@ It will take the file in resources/defaults.edn as defaults")
     (let [default-options (read-config "resources/defaults.edn")
           custom-options (read-config (first args))
           options (merge-with merge-overwrite default-options custom-options)]
-
-      (log-config! options)
-      (log4j/with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
+      
+      (with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
 
         (info "Test options:\n" (with-out-str (pprint options)))
 
