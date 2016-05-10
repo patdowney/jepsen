@@ -3,8 +3,6 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.fressian "0.2.1"]
                  [org.clojure/tools.logging "0.3.1"]
-                 [log4j/log4j "1.2.17"]
-                 [clj-logging-config "1.9.12"]
                  [clj-time "0.11.0"]
                  [knossos "0.2.5"]
                  [clj-ssh "0.5.14"]
