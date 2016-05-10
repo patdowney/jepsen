@@ -1,5 +1,5 @@
 {
- :loglevel :info
+ :loglevel :trace
  :trace-ssh true
 
  :os-flavour :null
@@ -8,10 +8,10 @@
 
  :perfdumpfile "perfdump.json"
 
- :ssh {:username #or [#env SSH_USER "username"]
-       :strict-host-key-checking false }
+ :ssh {:username #or [#env USER "username"]
+       :strict-host-key-checking :no }
 
- :time-limit 20
+ :time-limit 10
 
  :mongodb {
            :flavour :terraform

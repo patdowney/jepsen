@@ -1,3 +1,9 @@
+
+# we need this as redhat's init.d script is dumb
+processManagement:
+  pidFilePath: /var/run/mongodb/mongod.pid
+  fork: true
+
 systemLog:
   destination: syslog
 #  logAppend: true

@@ -103,22 +103,23 @@
                                   :chdir   "/opt/mongodb"}
                                  "/opt/mongodb/bin/mongod"
                                  :--config "/opt/mongodb/mongod.conf"))
-    :terraform (c/sudo (:username mongodb-config)
-                 (c/exec "/usr/bin/mongod"
-                         :--config "/etc/mongod.conf"
-                         :--fork))))
+    :terraform (c/su
+                 (c/exec :service :mongod :start))))
 
 (defn stop!
   "Stops Mongod"
-  [node mongodb-config] ; this works now, as long as you just use pidfile.
+  [node {:keys [flavour] :as mongodb-config}] ; this works now, as long as you just use pidfile.
   ; TODO - patch jepsen to not use killall?
   (trace "stopping mongod on" node)
-  (c/sudo (:username mongodb-config)
-          (meh (c/exec :kill (c/lit "$(pgrep mongod)")))
-          (warn "sleeping 5s as we aren't checking for mongo death well")
-          (Thread/sleep 5000)
-          ; not needed: (cu/stop-daemon! "/opt/mongodb/pidfile")
-          ))
+  (case flavour
+    :original (c/sudo (:username mongodb-config)
+     (meh (c/exec :kill (c/lit "$(pgrep mongod)")))
+     (warn "sleeping 5s as we aren't checking for mongo death well")
+     (Thread/sleep 5000)
+     ; not needed: (cu/stop-daemon! "/opt/mongodb/pidfile")
+     )
+    :terraform (c/su
+                 (c/exec :service :mongod :stop))))
 
 (defn wipe!
   "Shuts down MongoDB and wipes log files - and optionally data files"
