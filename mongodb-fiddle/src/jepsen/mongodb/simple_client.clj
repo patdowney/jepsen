@@ -26,9 +26,31 @@
             [knossos.op :as op]
             [jepsen.mongodb.core :refer :all]
             [jepsen.mongodb.mongo :as m]
-            [clojure.set :as set])
+            [clojure.set :as set]
+            [puppetlabs.structured-logging.core :refer [maplog]])
   (:import (clojure.lang ExceptionInfo)))
 
+(defn read-doc [op coll id]
+  (maplog [:stash :info] op "read")
+  (let [read-result (m/find-one coll id)
+        response (assoc op
+                   :type :ok
+                   :value (:value read-result))
+        _ (maplog [:stash :info] read-result "read response")]
+    response))
+
+(defn update-doc [op coll id]
+  (maplog [:stash :info] op "append")
+  (let [res (m/update! coll id
+                       {:$push {:value (:value op)}})]
+    (info :write-result (pr-str res))
+    (maplog [:stash :info] res "append response")
+    (assert (:acknowledged? res))
+    ; Note that modified-count could be zero, depending on the
+    ; storage engine, if you perform a write the same as the
+    ; current value.
+    (assert (= 1 (:matched-count res)))
+    (assoc op :type :ok)))
 
 (defrecord Client [db-name
                    coll-name
@@ -51,22 +73,9 @@
     ; Reads are idempotent; we can treat their failure as an info.
     (with-errors op #{:read}
       (case (:f op)
-        :read (let [res
-                    ; Normal read
-                    (m/find-one coll id)]
-                 (assoc op
-                     :type :ok
-                     :value (:value res)))
+        :read (read-doc op coll id)
 
-        :add (let [res (m/update! coll id
-                                     {:$push {:value (:value op)}})]
-                 (info :write-result (pr-str res))
-                 (assert (:acknowledged? res))
-                 ; Note that modified-count could be zero, depending on the
-                 ; storage engine, if you perform a write the same as the
-                 ; current value.
-                 (assert (= 1 (:matched-count res)))
-                 (assoc op :type :ok))
+        :add (update-doc op coll id)
 
         )))
   (teardown! [_ test]

@@ -52,7 +52,7 @@ It will take the file in resources/defaults.edn as defaults")
     (let [default-options (read-config "resources/defaults.edn")
           custom-options (read-config (first args))
           options (merge-with merge-overwrite default-options custom-options)]
-      
+
       (with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
 
         (info "Test options:\n" (with-out-str (pprint options)))

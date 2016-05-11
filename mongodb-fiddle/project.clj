@@ -8,6 +8,7 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [ch.qos.logback/logback-classic "1.1.7"]
                  [jepsen "0.1.1-SNAPSHOT" :exclusions [org.slf4j/slf4j-log4j12 ]]
+                 [puppetlabs/structured-logging "0.1.0"]
                  [org.mongodb/mongodb-driver "3.2.2"]
                  [org.codehaus.groovy/groovy-all "2.4.6"]
                  [aero "1.0.0-beta2"]
