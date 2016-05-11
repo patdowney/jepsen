@@ -21,6 +21,7 @@
                                }
            :write-concern :majority
            :read-concern :majority
+           :read-with-find-and-modify false
            :protocol-version 1                              ; note only relevant in mongo 3?
            :client-options {
                            :max-wait-time 60000

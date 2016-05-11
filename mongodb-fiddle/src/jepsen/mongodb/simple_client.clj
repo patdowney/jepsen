@@ -39,6 +39,15 @@
         _ (maplog [:stash :info] read-result "read response")]
     response))
 
+(defn read-doc-wfam [op coll id]
+  (maplog [:stash :info] op "readfam")
+  (let [read-result (m/read-with-find-and-modify coll id)
+        response (assoc op
+                   :type :ok
+                   :value (:value read-result))
+        _ (maplog [:stash :info] read-result "readfam response")]
+    response))
+
 (defn update-doc [op coll id]
   (maplog [:stash :info] op "append")
   (let [res (m/update! coll id
@@ -55,6 +64,9 @@
 (defrecord Client [db-name
                    coll-name
                    id
+                   read-concern
+                   write-concern
+                   read-with-find-and-modify
                    client
                    coll]
   client/Client
@@ -63,8 +75,10 @@
     (let [client (m/cluster-client test)
           coll   (-> client
                      (m/db db-name)
-                     (m/collection coll-name))]
-      ; Create document
+                     (m/collection coll-name)
+                     (m/with-read-concern  read-concern)
+                     (m/with-write-concern write-concern))]
+      ; Create initial document
       (m/upsert! coll {:_id id, :value []})
 
       (assoc this :client client, :coll coll)))
@@ -73,7 +87,9 @@
     ; Reads are idempotent; we can treat their failure as an info.
     (with-errors op #{:read}
       (case (:f op)
-        :read (read-doc op coll id)
+        :read (if read-with-find-and-modify
+                (read-doc-wfam op coll id)
+                (read-doc op coll id))
 
         :add (update-doc op coll id)
 
@@ -92,6 +108,9 @@
   (Client. "jepsen"
            "cas"
            0
+           (:read-concern (:mongodb opts))
+           (:write-concern (:mongodb opts))
+           (:read-with-find-and-modify (:mongodb opts))
            nil
            nil))
 
