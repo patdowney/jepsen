@@ -1,0 +1,29 @@
+{
+ :scenario "mongo2 with partition"
+ ; note log level must now be set by modifying logback.groovy - it's loaded at start time, and logs to console and file
+ :trace-ssh true
+
+ :os-flavour :null
+
+ :nodes [:mongo-2.6.3_0.us-east-1a.i.jpkot.net :mongo-2.6.3_1.us-east-1a.i.jpkot.net :mongo-2.6.3_2.us-east-1a.i.jpkot.net :mongo-2.6.3_3.us-east-1a.i.jpkot.net :mongo-2.6.3_4.us-east-1a.i.jpkot.net]
+
+ :perfdumpfile "perfdump.json"
+
+ :ssh {:username #or [#env USER "username"]
+       :strict-host-key-checking :no }
+
+ :time-limit 500
+
+ :nemesis-kind :partition
+
+ :mongodb {
+           :flavour :terraform
+           :conf-file "mongod.conf.mmapv1.terraform.yml"
+           :write-concern :acknowledged
+           :read-concern :local
+
+           :install false
+           :username "mongod"
+ }
+}
+

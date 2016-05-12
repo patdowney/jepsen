@@ -9,6 +9,8 @@
 
  :os-flavour :debian                                                ; options :debian or :null
 
+ :nemesis-kind :noop                                                ; no nemeses by default
+
  :mongodb {
            :flavour :original                                 ; currently supports ':original' and ':terraform'
            :install true

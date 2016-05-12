@@ -4,7 +4,7 @@
   (:require [clojure [pprint :refer :all]
              [string :as str]]
             [clojure.java.io :as io]
-            [clojure.tools.logging :refer [debug info warn]]
+            [clojure.tools.logging :refer [debug info warn spy]]
             [clojure.core.reducers :as r]
             [jepsen [core :as jepsen]
              [util :as util :refer [meh timeout]]

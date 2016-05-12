@@ -403,10 +403,6 @@
             (cheshire/generate-stream fixed-history out {:pretty true}))))
       {:valid? true})))
 
-(defn checkers [] (checker/compose {:perf-dump (perf-dump)
-                            :latency-graph (checker/latency-graph)
-                            :rate-graph    (checker/rate-graph)}))
-
 (defn test-
   "Constructs a test with the given name prefixed by 'mongodb ', merging any
   given options. Special options for Mongo:
@@ -422,6 +418,8 @@
             :debian debian/os
             :null null_os/null_os)
       :db              (db (:mongodb opts))
-      :checker         (checkers)
-      :nemesis         nemesis/noop)
+      :nemesis (case (:nemesis-kind opts)
+                 :partition (nemesis/partition-random-halves)
+                 :noop nemesis/noop
+                 ))
     opts))
