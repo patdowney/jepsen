@@ -1,0 +1,20 @@
+# we need this as redhat's init.d script is dumb
+processManagement:
+  pidFilePath: /var/run/mongodb/mongod.pid
+  fork: true
+
+systemLog:
+  destination: syslog
+#  logAppend: true
+#  path: /var/opt/mongodb/mongod.log
+
+storage:
+  dbPath: /var/lib/mongo
+  journal:
+    enabled: true
+#   commitIntervalMs: 1000 # might want to verify journal loss windows
+  preallocDataFiles: false
+  smallFiles: true
+
+replication:
+  replSetName: jepsen

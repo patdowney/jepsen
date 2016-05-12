@@ -18,7 +18,7 @@
 
  :mongodb {
            :flavour :terraform
-           :conf-file "mongod.conf.mmapv1.terraform.yml"
+           :conf-file "mongod.conf.v263.terraform.yml"
            :write-concern :acknowledged
            :read-concern :local
 
