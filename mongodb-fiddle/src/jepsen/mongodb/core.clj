@@ -270,24 +270,24 @@
   "Generates the config for a replset in a given test."
   [test]
   (case (:major-version (:mongodb test))
-    (2 (do
-         {:_id             "jepsen"
-          :settings        {:heartbeatTimeoutSecs 20}
-          :members         (->> test
-                                :nodes
-                                (map-indexed (fn [i node]
-                                               {:_id  i
-                                                :host (str (name node) ":27017")})))})
-      3 (do
-         (assert (integer? (:protocol-version (:mongodb test))))
-         {:_id             "jepsen"
-          :protocolVersion (:protocol-version (:mongodb test))
-          :settings        {:heartbeatTimeoutSecs 20}
-          :members         (->> test
-                                :nodes
-                                (map-indexed (fn [i node]
-                                               {:_id  i
-                                                :host (str (name node) ":27017")})))}))))
+    2 (do
+        {:_id      "jepsen"
+         :settings {:heartbeatTimeoutSecs 20}
+         :members  (->> test
+                        :nodes
+                        (map-indexed (fn [i node]
+                                       {:_id  i
+                                        :host (str (name node) ":27017")})))})
+    3 (do
+        (assert (integer? (:protocol-version (:mongodb test))))
+        {:_id             "jepsen"
+         :protocolVersion (:protocol-version (:mongodb test))
+         :settings        {:heartbeatTimeoutSecs 20}
+         :members         (->> test
+                               :nodes
+                               (map-indexed (fn [i node]
+                                              {:_id  i
+                                               :host (str (name node) ":27017")})))})))
 
 (defn join!
   "Join nodes into a replica set. Blocks until any primary is visible to all
