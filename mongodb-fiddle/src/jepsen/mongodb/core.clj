@@ -27,7 +27,8 @@
             [cheshire.core :as cheshire]
 )
   (:import (clojure.lang ExceptionInfo)
-           (jepsen.checker Checker)))
+           (jepsen.checker Checker)
+           (com.mongodb MongoCommandException)))
 
 (defn install!
   "Installs a tarball from an HTTP URL"
@@ -149,6 +150,23 @@
   [conn]
   (try
     (m/admin-command! conn :replSetGetStatus 1)
+    ; I have a feeling the "ExceptionInfo" version is out of date - admin-command doesn't convert exceptions for us!
+    (catch MongoCommandException e                          ; lazy - just copying previous logic!  TODO: clean up and remove duplcation
+      (condp re-find (.getErrorMessage e)
+        ; Some of the time (but not all the time; why?) Mongo returns this error
+        ; from replSetGetStatus as well!
+        #"Received replSetInitiate - should come online shortly"
+        nil
+
+        ; This is a hint we should back off and retry; one of the nodes probably
+        ; isn't fully alive yet.
+        #"need all members up to initiate, not ok"
+        (do (info "not all members alive yet; retrying replica set initiate"
+                  (Thread/sleep 1000)
+                  (replica-set-status conn)))
+        ; Or by default re-throw
+        (throw e))
+      )
     (catch ExceptionInfo e
       (condp re-find (get-in (ex-data e) [:result "errmsg"])
         ; Some of the time (but not all the time; why?) Mongo returns this error
