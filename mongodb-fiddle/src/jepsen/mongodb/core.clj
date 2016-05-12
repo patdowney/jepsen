@@ -16,6 +16,7 @@
              [store :as store]
              [report :as report]
              [tests :as tests]]
+            [jepsen.net :refer [iptables-old]]
             [jepsen.control :refer [su]]
             [jepsen.control.util :as cu]
             [jepsen.control.net :as net]
@@ -463,6 +464,7 @@
             :debian debian/os
             :null null_os/null_os)
       :db              (db (:mongodb opts))
+      :net iptables-old
       :nemesis (case (:nemesis-kind opts)
                  :partition (nemesis/partition-random-halves)
                  :noop nemesis/noop

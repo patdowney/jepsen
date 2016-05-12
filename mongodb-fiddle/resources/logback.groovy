@@ -76,8 +76,8 @@ appender("STASH_FILE", FileAppender) {
 }
 
 appender("STASH", LogstashTcpSocketAppender) {
-    remoteHost = "foo.bar"
-    port = 4650
+    remoteHost = "logstash.us-east-1a.i.jpkot.net"
+    port = 5515
     encoder(LoggingEventCompositeJsonEncoder) {
         providers(LoggingEventJsonProviders) {
             timestamp(LoggingEventFormattedTimestampJsonProvider)

@@ -21,7 +21,7 @@
            :major-version 2
            :conf-file "mongod.conf.v263.terraform.yml"
            :write-concern :acknowledged
-           :read-concern :local
+           :read-concern :default                           ; only valid option on mongod 2
 
            :install false
            :username "mongod"
