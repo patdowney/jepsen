@@ -147,7 +147,24 @@
 (defn replica-set-status
   "Returns the current replica set status."
   [conn]
-  (m/admin-command! conn :replSetGetStatus 1))
+  (try
+    (m/admin-command! conn :replSetGetStatus 1)
+    (catch ExceptionInfo e
+      (condp re-find (get-in (ex-data e) [:result "errmsg"])
+        ; Some of the time (but not all the time; why?) Mongo returns this error
+        ; from replSetGetStatus as well!
+        #"Received replSetInitiate - should come online shortly"
+        nil
+
+        ; This is a hint we should back off and retry; one of the nodes probably
+        ; isn't fully alive yet.
+        #"need all members up to initiate, not ok"
+        (do (info "not all members alive yet; retrying replica set initiate"
+                  (Thread/sleep 1000)
+                  (replica-set-status conn)))
+        ; Or by default re-throw
+        (throw e)))
+    ))
 
 (defn replica-set-initiate!
   "Initialize a replica set on a node."
