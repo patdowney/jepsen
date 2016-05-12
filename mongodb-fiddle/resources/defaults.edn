@@ -10,6 +10,8 @@
  :os-flavour :debian                                                ; options :debian or :null
 
  :nemesis-kind :noop                                                ; no nemeses by default
+ :nemesis-delay 50                                          ; sleep 50s between nemesis on/off
+ :nemesis-duration 10                                       ; keep nemesis active for 10s
 
  :mongodb {
            :flavour :original                                 ; currently supports ':original' and ':terraform'

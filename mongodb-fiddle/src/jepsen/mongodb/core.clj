@@ -3,7 +3,7 @@
              [string :as str]]
             [clojure.java.io :as io]
             [clojure.pprint :refer [pprint]]
-            [clojure.tools.logging :refer [debug info warn trace spy]]
+            [clojure.tools.logging :refer [debug info warn trace spy logp]]
             [clojure.walk :as walk]
             [jepsen [core :as jepsen]
              [db :as db]
@@ -467,6 +467,5 @@
       :net iptables-old
       :nemesis (case (:nemesis-kind opts)
                  :partition (nemesis/partition-random-halves)
-                 :noop nemesis/noop
-                 ))
+                 :noop nemesis/noop))
     opts))

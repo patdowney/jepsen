@@ -11,6 +11,10 @@
 
  :time-limit   10
 
+ :nemesis-delay 2
+ :nemesis-duration 1
+ :nemesis-kind :noop
+
  :mongodb      {
                 :install   false
                 :configure true

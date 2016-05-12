@@ -202,8 +202,12 @@
                                               :value))
                                 gen/seq
                                 (gen/stagger 1)
-                                (gen/time-limit (:time-limit opts))
-                                gen/clients)
+                                (gen/nemesis
+                                  (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
+                                                   {:type :info :f :stop}
+                                                   (gen/sleep (:nemesis-duration opts))
+                                                   {:type :info :f :start}])))
+                                (gen/time-limit (:time-limit opts)))
                            (->> {:type :invoke, :f :read, :value nil}
                                 gen/once
                                 gen/clients))
