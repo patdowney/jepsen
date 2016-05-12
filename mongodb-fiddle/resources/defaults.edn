@@ -13,6 +13,7 @@
 
  :mongodb {
            :flavour :original                                 ; currently supports ':original' and ':terraform'
+           :major-version 3                                       ; currently supports v2 and v3 - mostly used for replica sets
            :install true
            :configure true
            :username "mongodb"
@@ -24,7 +25,7 @@
            :write-concern :majority
            :read-concern :majority
            :read-with-find-and-modify false
-           :protocol-version 1                              ; note only relevant in mongo 3?
+           :protocol-version 1
            :client-options {
                            :max-wait-time 60000
                            :connect-timeout 60000

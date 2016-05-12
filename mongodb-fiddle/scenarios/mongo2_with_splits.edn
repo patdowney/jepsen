@@ -18,6 +18,7 @@
 
  :mongodb {
            :flavour :terraform
+           :major-version 2
            :conf-file "mongod.conf.v263.terraform.yml"
            :write-concern :acknowledged
            :read-concern :local
