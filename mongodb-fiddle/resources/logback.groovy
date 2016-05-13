@@ -1,6 +1,5 @@
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder
 import ch.qos.logback.classic.filter.ThresholdFilter
-import ch.qos.logback.classic.net.SyslogAppender
 import ch.qos.logback.core.ConsoleAppender
 import ch.qos.logback.core.FileAppender
 import ch.qos.logback.classic.AsyncAppender
@@ -93,12 +92,6 @@ appender("STASH", LogstashTcpSocketAppender) {
     }
 }
 
-appender("SYSLOG", SyslogAppender) {
-    syslogHost = "localhost"
-    facility = "LOCAL2"
-    suffixPattern = "%msg"
-}
-
 
 // set global log level - filter by adding specific loggers, or adding filters to appenders (like STDOUT_FILTERED)
 //  actual log level is limited by what you specify here - if you set root to "INFO" you can't set anything else to DEBUG!
@@ -107,4 +100,4 @@ root(TRACE, ["FILE_ASYNC","STDOUT_FILTERED"])
 // specify log levels, and optionally other appenders, for specific namespaces
 logger("jepsen", TRACE)
 logger("org.mongodb", WARN) // mongo is pretty verbose - trim it down
-logger("stash", INFO, ["SYSLOG"], false)
+logger("stash", INFO, ["STASH"])
