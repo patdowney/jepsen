@@ -13,7 +13,8 @@
             [jepsen.core :as jepsen]
             [aero.core :refer [read-config]]
             [jepsen.control :as control]
-            [jepsen.mongodb.log-context :refer [with-logging-context]]))
+            [jepsen.mongodb.log-context :refer [with-logging-context]]
+            [jepsen.mongodb.util :as util]))
 
 (defn random-string [length]
   (let [ascii-codes (concat (range 48 58) (range 66 91) (range 97 123))]
@@ -51,9 +52,12 @@ It will take the file in resources/defaults.edn as defaults")
 
     (let [default-options (read-config "resources/defaults.edn")
           custom-options (read-config (first args))
-          options (merge-with merge-overwrite default-options custom-options)]
+          options (merge-with merge-overwrite default-options custom-options)
+          run-id (random-string 10)
+          scenario (:scenario options)]
 
-      (with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
+      (with-logging-context {:run-id run-id :scenario scenario}
+        (util/logstash {:action "start" :payload {:run-id run-id :scenario scenario}})
 
         (info "Test options:\n" (with-out-str (pprint options)))
 

@@ -1,6 +1,12 @@
 (ns jepsen.mongodb.util
-  (:require [clojure.tools.logging :refer [debug info warn trace spy]]
-            [clojure.string :as str]))
+  (:require [clojure.tools.logging :refer [debug info warn trace spy] :as logging]
+            [clojure.string :as str]
+            [cheshire.core :as cheshire]))
+
+(defn logstash [payload]
+  (let [json (cheshire/generate-string payload)]
+    (trace "logstash:" json)
+    (logging/log "stash" :info nil json)))
 
 (defn replace-all [str replacement-map]
   (info "replacing with" replacement-map)

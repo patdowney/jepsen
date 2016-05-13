@@ -4,7 +4,7 @@
   (:require [clojure [pprint :refer :all]
              [string :as str]]
             [clojure.java.io :as io]
-            [clojure.tools.logging :refer [debug info warn spy]]
+            [clojure.tools.logging :refer [debug info warn spy trace] :as logging]
             [clojure.core.reducers :as r]
             [jepsen [core :as jepsen]
              [util :as jutil :refer [meh timeout]]
@@ -20,7 +20,7 @@
             [jepsen.control [net :as net]
              [util :as net/util]]
             [jepsen.mongodb.reports :as reports]
-            [jepsen.mongodb.util :as util]
+            [jepsen.mongodb.util :as util :refer [logstash]]
             [jepsen.mongodb.base-tests :refer [test-]]
             [jepsen.os.debian :as debian]
             [jepsen.checker.timeline :as timeline]
@@ -30,33 +30,36 @@
             [jepsen.mongodb.core :refer :all]
             [jepsen.mongodb.mongo :as m]
             [clojure.set :as set]
-            [puppetlabs.structured-logging.core :refer [maplog]])
+            [puppetlabs.structured-logging.core :refer [maplog]]
+            [cheshire.core :as cheshire])
   (:import (clojure.lang ExceptionInfo)))
 
+
+
 (defn read-doc [op coll id]
-  (maplog [:stash :info] op "read")
+  (logstash {:action "read" :payload op})
   (let [read-result (m/find-one coll id)
         response (assoc op
                    :type :ok
                    :value (:value read-result))
-        _ (maplog [:stash :info] read-result "read response")]
+        _ (logstash {:action "read response" :payload read-result})]
     response))
 
 (defn read-doc-wfam [op coll id]
-  (maplog [:stash :info] op "readfam")
+  (logstash {:action "readfam" :payload op})
   (let [read-result (m/read-with-find-and-modify coll id)
         response (assoc op
                    :type :ok
                    :value (:value read-result))
-        _ (maplog [:stash :info] read-result "readfam response")]
+        _ (logstash {:action "readfam response" :payload read-result})]
     response))
 
 (defn update-doc [op coll id]
-  (maplog [:stash :info] op "append")
+  (logstash {:action "append" :payload op})
   (let [res (m/update! coll id
                        {:$push {:value (:value op)}})]
     (info :write-result (pr-str res))
-    (maplog [:stash :info] res "append response")
+    (logstash {:action "append response" :payload res})
     (assert (:acknowledged? res))
     ; Note that modified-count could be zero, depending on the
     ; storage engine, if you perform a write the same as the
