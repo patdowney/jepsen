@@ -19,6 +19,7 @@
              [tests :as tests]]
             [jepsen.control [net :as net]
              [util :as net/util]]
+            [jepsen.mongodb.reports :as reports]
             [jepsen.os.debian :as debian]
             [jepsen.checker.timeline :as timeline]
             [knossos.core :as knossos]
@@ -212,7 +213,7 @@
                                 gen/once
                                 gen/clients))
             :checker     (checker/compose
-                           {:perf-dump (perf-dump)
+                           {:perf-dump (reports/perf-dump)
                             ;:latency-graph (checker/latency-graph)
                             ;:rate-graph    (checker/rate-graph)
                             :details   (check-sets)})
