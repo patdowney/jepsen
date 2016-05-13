@@ -7,7 +7,7 @@
             [clojure.tools.logging :refer [debug info warn spy]]
             [clojure.core.reducers :as r]
             [jepsen [core :as jepsen]
-             [util :as util :refer [meh timeout]]
+             [util :as jutil :refer [meh timeout]]
              [control :as c :refer [|]]
              [client :as client]
              [checker :as checker]
@@ -20,6 +20,8 @@
             [jepsen.control [net :as net]
              [util :as net/util]]
             [jepsen.mongodb.reports :as reports]
+            [jepsen.mongodb.util :as util]
+            [jepsen.mongodb.base-tests :refer [test-]]
             [jepsen.os.debian :as debian]
             [jepsen.checker.timeline :as timeline]
             [knossos.core :as knossos]
@@ -86,7 +88,7 @@
 
   (invoke! [this test op]
     ; Reads are idempotent; we can treat their failure as an info.
-    (with-errors op #{:read}
+    (util/with-errors op #{:read}
       (case (:f op)
         :read (if read-with-find-and-modify
                 (read-doc-wfam op coll id)
@@ -175,16 +177,16 @@
 
           {:valid?          (and (empty? lost) (empty? unexpected) (empty? dups) (empty? revived))
            :duplicates      dups
-           :ok              (util/integer-interval-set-str ok)
-           :lost            (util/integer-interval-set-str lost)
-           :unexpected      (util/integer-interval-set-str unexpected)
-           :recovered       (util/integer-interval-set-str recovered)
-           :revived         (util/integer-interval-set-str revived)
-           :ok-frac         (util/fraction (count ok) (count attempts))
-           :revived-frac    (util/fraction (count revived) (count fails))
-           :unexpected-frac (util/fraction (count unexpected) (count attempts))
-           :lost-frac       (util/fraction (count lost) (count attempts))
-           :recovered-frac  (util/fraction (count recovered) (count attempts))})))))
+           :ok              (jutil/integer-interval-set-str ok)
+           :lost            (jutil/integer-interval-set-str lost)
+           :unexpected      (jutil/integer-interval-set-str unexpected)
+           :recovered       (jutil/integer-interval-set-str recovered)
+           :revived         (jutil/integer-interval-set-str revived)
+           :ok-frac         (jutil/fraction (count ok) (count attempts))
+           :revived-frac    (jutil/fraction (count revived) (count fails))
+           :unexpected-frac (jutil/fraction (count unexpected) (count attempts))
+           :lost-frac       (jutil/fraction (count lost) (count attempts))
+           :recovered-frac  (jutil/fraction (count recovered) (count attempts))})))))
 
 
 (defn test

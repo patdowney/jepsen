@@ -15,7 +15,7 @@
     [jepsen.control :refer [su]]
     [jepsen.control.util :as cu]
     [jepsen.mongodb.util :as util]
-
+    [jepsen.mongodb.cluster :as cluster]
     [clojure.java.io :as io]))
 
 (defn install!
@@ -122,3 +122,23 @@
   because what else would 'printjson' do?"
   [cmd]
   (-> (c/exec :mongo :--quiet :--eval (str "printjson(" cmd ")"))))
+
+(defn db
+  "MongoDB for a particular configuration"
+  [mongodb-config]
+  (reify db/DB
+    (setup! [_ test node]
+      (trace "setup! on " node)
+      (if (:install mongodb-config)
+        (install! node mongodb-config)
+        (wipe! node mongodb-config true))                  ; stop and wipe
+      ; TODO - should we be allowing users to not even stop Mongo?
+      ; be good to read the docs in more detail for relevant versions, see what
+      ; we can do without a restart.
+      (if (:configure mongodb-config) (configure! node mongodb-config))
+      (start! node mongodb-config)
+      (cluster/join! node test))
+
+    (teardown! [_ test node]
+      (trace "teardown! on " node)
+      (wipe! node mongodb-config))))

@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [clojure.tools.logging :refer [debug info warn]]
             [jepsen [core      :as jepsen]
-                    [util      :as util :refer [meh timeout]]
+                    [util      :refer [meh timeout]]
                     [control   :as c :refer [|]]
                     [client    :as client]
                     [checker   :as checker]
@@ -22,8 +22,9 @@
             [jepsen.checker.timeline :as timeline]
             [knossos.core :as knossos]
             [knossos.model :as model]
-            [jepsen.mongodb.core :refer :all]
-            [jepsen.mongodb.mongo :as m])
+            [jepsen.mongodb.base-tests :refer [test-]]
+            [jepsen.mongodb.mongo :as m]
+            [jepsen.mongodb.util :as util])
   (:import (clojure.lang ExceptionInfo)))
 
 (defrecord Client [db-name
@@ -49,7 +50,7 @@
 
   (invoke! [this test op]
     ; Reads are idempotent; we can treat their failure as an info.
-    (with-errors op #{:read}
+    (util/with-errors op #{:read}
       (case (:f op)
         :read (let [res
                     ; Normal read
