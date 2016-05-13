@@ -33,30 +33,56 @@
             [puppetlabs.structured-logging.core :refer [maplog]])
   (:import (clojure.lang ExceptionInfo)))
 
+(defn timing-data [start end]
+  {:start-ns start
+   :end-ns   end
+   :duration (- end start)})
+
+(defn op-data [op result]
+  {:process      (:process op)
+   :optype       (:type op)
+   :responsetype (:type result)
+   :f            (pr-str (:f op))
+   :value        (pr-str (:value op))
+   :error (:error result)
+   }
+  )
+
+(defmacro with-timing-logs [op & body]
+  `(try
+     (let [start# (:time ~op)
+           result# ~@body
+           end# (jutil/relative-time-nanos)]
+       (maplog [:stash :info] (merge (timing-data start# end#)
+                                     (op-data ~op result#))
+               "with-timing-logs")
+       result#)
+     (catch Exception e#
+       (warn e# "Uncaught exception seen during invoke! call")
+       (let [end# (jutil/relative-time-nanos)]
+         (maplog [:stash :warn]
+                 (merge (timing-data (:time ~op) end#)
+                        (op-data ~op {:type  "uncaught_exception"
+                                     :error (.getClass e#)}))
+                 (.getMessage e#)))
+       (throw e#))))
+
 (defn read-doc [op coll id]
-  (maplog [:stash :info] op "read")
-  (let [read-result (m/find-one coll id)
-        response (assoc op
-                   :type :ok
-                   :value (:value read-result))
-        _ (maplog [:stash :info] read-result "read response")]
-    response))
+  (let [read-result (m/find-one coll id)]
+    (assoc op
+      :type :ok
+      :value (:value read-result))))
 
 (defn read-doc-wfam [op coll id]
-  (maplog [:stash :info] op "readfam")
-  (let [read-result (m/read-with-find-and-modify coll id)
-        response (assoc op
-                   :type :ok
-                   :value (:value read-result))
-        _ (maplog [:stash :info] read-result "readfam response")]
-    response))
+  (let [read-result (m/read-with-find-and-modify coll id)]
+    (assoc op
+      :type :ok
+      :value (:value read-result))))
 
 (defn update-doc [op coll id]
-  (maplog [:stash :info] op "append")
   (let [res (m/update! coll id
                        {:$push {:value (:value op)}})]
     (info :write-result (pr-str res))
-    (maplog [:stash :info] res "append response")
     (assert (:acknowledged? res))
     ; Note that modified-count could be zero, depending on the
     ; storage engine, if you perform a write the same as the
@@ -88,15 +114,16 @@
 
   (invoke! [this test op]
     ; Reads are idempotent; we can treat their failure as an info.
-    (util/with-errors op #{:read}
-      (case (:f op)
-        :read (if read-with-find-and-modify
-                (read-doc-wfam op coll id)
-                (read-doc op coll id))
+    (with-timing-logs op
+      (util/with-errors op #{:read}
+        (case (:f op)
+          :read (if read-with-find-and-modify
+                  (read-doc-wfam op coll id)
+                  (read-doc op coll id))
 
-        :add (update-doc op coll id)
+          :add (update-doc op coll id)
 
-        )))
+          ))))
   (teardown! [_ test]
     (.close ^java.io.Closeable client)))
 

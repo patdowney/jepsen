@@ -100,4 +100,4 @@ root(TRACE, ["FILE_ASYNC","STDOUT_FILTERED"])
 // specify log levels, and optionally other appenders, for specific namespaces
 logger("jepsen", TRACE)
 logger("org.mongodb", WARN) // mongo is pretty verbose - trim it down
-logger("stash", INFO, ["STASH"])
+logger("stash", INFO, ["STASH"], false)
