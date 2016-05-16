@@ -7,9 +7,13 @@
 
  :time-limit 300
 
+ :concurrency 100
+
  :os-flavour :debian                                                ; options :debian or :null
 
  :nemesis-kind :noop                                                ; no nemeses by default
+ :test-kind :append-ints
+
  :nemesis-delay 50                                          ; sleep 50s between nemesis on/off
  :nemesis-duration 10                                       ; keep nemesis active for 10s
 

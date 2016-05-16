@@ -127,7 +127,7 @@
     (.close ^java.io.Closeable client)))
 
 (defn client
-  "A client which implements a register on top of an entire document.
+  "A client which implements a simple array that you can append to.
 
   Options:
 
@@ -215,20 +215,21 @@
            :recovered-frac  (jutil/fraction (count recovered) (count attempts))})))))
 
 
-(defn test
+(defn infinite-adds []
+  (map (partial array-map
+                :type :invoke
+                :f :add
+                :value)
+       (range)))
 
+(defn append-ints-test
   [opts]
-  (test- "simple"
+  (test- "append-ints"
          (merge
            {:client      (client opts)
-            :concurrency 100
             ;:generator   (gen/clients (gen/each (gen/seq [{:type :invoke, :f :add, :value :a}])))
             :generator   (gen/phases
-                           (->> (range)
-                                (map (partial array-map
-                                              :type :invoke
-                                              :f :add
-                                              :value))
+                           (->> (infinite-adds)
                                 gen/seq
                                 (gen/stagger 1)
                                 (gen/nemesis
@@ -242,8 +243,32 @@
                                 gen/clients))
             :checker     (checker/compose
                            {:perf-dump (reports/perf-dump)
-                            ;:latency-graph (checker/latency-graph)
-                            ;:rate-graph    (checker/rate-graph)
                             :details   (check-sets)})
             }
            opts)))
+
+(defn slow-append-singlethreaded-test
+  [opts]
+  (test- "slow-append-ints"
+         (merge
+           {:client      (client opts)
+            :concurrency 1                                  ;this could be in config in theory, but why not hard-code?
+            :generator   (gen/phases
+                           (->> (infinite-adds)
+                                gen/seq
+                                (gen/delay 1)               ; 1 write per second
+                                (gen/nemesis
+                                  (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
+                                                   {:type :info :f :stop}
+                                                   (gen/sleep (:nemesis-duration opts))
+                                                   {:type :info :f :start}])))
+                                (gen/time-limit (:time-limit opts)))
+                           (->> {:type :invoke, :f :read, :value nil}
+                                gen/once
+                                gen/clients))
+            :checker     (checker/compose
+                           {:perf-dump (reports/perf-dump)
+                            :details   (check-sets)})
+            }
+           opts)
+         ))

@@ -51,7 +51,10 @@ It will take the file in resources/defaults.edn as defaults")
 
     (let [default-options (read-config "resources/defaults.edn")
           custom-options (read-config (first args))
-          options (merge-with merge-overwrite default-options custom-options)]
+          options (merge-with merge-overwrite default-options custom-options)
+          the-test (case (:test-kind options)
+                   :append-ints sc/append-ints-test
+                   :slow-append-ints sc/slow-append-singlethreaded-test)]
 
       (with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
 
@@ -59,7 +62,7 @@ It will take the file in resources/defaults.edn as defaults")
 
         ; Run test
         (binding [control/*trace* (:trace-ssh options)]
-          (let [t (jepsen/run! (sc/test options))]
+          (let [t (jepsen/run! (the-test options))]
             (System/exit (if (:valid? (:results t)) 0 1))))))
 
     (catch Throwable t
