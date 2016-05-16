@@ -13,6 +13,15 @@
                  [org.codehaus.groovy/groovy-all "2.4.6"]
                  [aero "1.0.0-beta2"]
                  [cheshire "5.6.1"]]
+  :jvm-opts ["-Xmx16g"
+             "-XX:+UseConcMarkSweepGC"
+             "-XX:+UseParNewGC"
+             "-XX:+CMSParallelRemarkEnabled"
+             "-XX:+AggressiveOpts"
+             "-XX:+UseFastAccessorMethods"
+             "-XX:MaxInlineLevel=32"
+             "-XX:MaxRecursiveInlineLevel=2"
+             "-server"]
   :main jepsen.mongodb.runner
   :aot [jepsen.mongodb.runner
         clojure.tools.logging.impl])

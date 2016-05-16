@@ -42,17 +42,17 @@
             (re-find #"inet addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"))
        1))
 
-(defn ip
+(def ip
   "Look up an ip for a hostname"
-  [host]
-  ; getent output is of the form:
-  ; 74.125.239.39   STREAM host.com
-  ; 74.125.239.39   DGRAM
-  ; ...
-  (first (str/split (->> (exec :getent :ahosts host)
-                         (str/split-lines)
-                         (first))
-                    #"\s+")))
+  (memoize (fn [host]
+             ; getent output is of the form:
+             ; 74.125.239.39   STREAM host.com
+             ; 74.125.239.39   DGRAM
+             ; ...
+             (first (str/split (->> (exec :getent :ahosts host)
+                                    (str/split-lines)
+                                    (first))
+                               #"\s+")))))
 
 (defn cut-random-link
   "Cuts a random link to any of nodes."
