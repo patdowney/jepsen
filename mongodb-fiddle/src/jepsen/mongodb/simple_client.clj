@@ -78,7 +78,7 @@
       :type :ok
       :value (:value read-result))))
 
-(defn update-doc [op coll id]
+(defn add-int-to-doc [op coll id]
   (let [res (m/update! coll id
                        {:$push {:value (:value op)}})]
     (info :write-result (pr-str res))
@@ -112,15 +112,15 @@
       (assoc this :client client, :coll coll)))
 
   (invoke! [this test op]
-    ; Reads are idempotent; we can treat their failure as an info.
+    ; Reads and adds are idempotent; we can treat their failure as an info.
     (with-timing-logs op
-      (util/with-errors op #{:read}
+      (util/with-errors op #{:read :add}
         (case (:f op)
           :read (if read-with-find-and-modify
                   (read-doc-wfam op coll id)
                   (read-doc op coll id))
 
-          :add (update-doc op coll id)
+          :add (add-int-to-doc op coll id)
 
           ))))
   (teardown! [_ test]
