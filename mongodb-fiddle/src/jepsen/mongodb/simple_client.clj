@@ -39,31 +39,30 @@
    :duration (- end start)})
 
 (defn op-data [op result]
-  {:process      (:process op)
-   :optype       (:type op)
-   :responsetype (:type result)
-   :f            (pr-str (:f op))
-   :value        (pr-str (:value op))
-   :error (:error result)
-   }
-  )
+  (let [value-keyword (keyword (str "value-" (:f op)))]
+    {:process      (:process op)
+     :optype       (:type op)
+     :responsetype (:type result)
+     :f            (:f op)
+     value-keyword (:value op)
+     :error        (or (:error result) "none")}))
 
 (defmacro with-timing-logs [op & body]
   `(try
      (let [start# (:time ~op)
            result# ~@body
            end# (jutil/relative-time-nanos)]
-       (maplog [:stash :info] (merge (timing-data start# end#)
-                                     (op-data ~op result#))
-               "with-timing-logs")
+       (maplog [:stash :info] {:client-data (merge (timing-data start# end#)
+                                              (op-data ~op result#))}
+               "client invoke")
        result#)
      (catch Exception e#
        (warn e# "Uncaught exception seen during invoke! call")
        (let [end# (jutil/relative-time-nanos)]
          (maplog [:stash :warn]
-                 (merge (timing-data (:time ~op) end#)
-                        (op-data ~op {:type  "uncaught_exception"
-                                     :error (.getClass e#)}))
+                 {:client-data (merge (timing-data (:time ~op) end#)
+                                      (op-data ~op {:type  "uncaught_exception"
+                                                    :error (.getClass e#)}))}
                  (.getMessage e#)))
        (throw e#))))
 

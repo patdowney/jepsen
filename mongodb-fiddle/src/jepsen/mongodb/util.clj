@@ -16,8 +16,8 @@
   invocation."
   [op idempotent-ops & body]
   `(let [error-type# (if (~idempotent-ops (:f ~op))
-                       :fail
-                       :info)]
+                       :info
+                       :fail)]
      (try
        ~@body
        (catch com.mongodb.MongoNotPrimaryException e#

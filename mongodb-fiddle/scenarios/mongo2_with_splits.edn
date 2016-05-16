@@ -12,7 +12,9 @@
  :ssh {:username #or [#env USER "username"]
        :strict-host-key-checking :no }
 
- :time-limit 500
+ :time-limit 600
+ :nemesis-delay 60
+ :nemesis-duration 60
 
  :nemesis-kind :partition
 
