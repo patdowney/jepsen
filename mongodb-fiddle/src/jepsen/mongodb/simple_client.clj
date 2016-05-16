@@ -39,7 +39,7 @@
    :duration (- end start)})
 
 (defn op-data [op result]
-  (let [value-keyword (keyword (str "value-" (:f op)))]
+  (let [value-keyword (keyword (str "value-" (name (:f op))))]
     {:process      (:process op)
      :optype       (:type op)
      :responsetype (:type result)
