@@ -14,6 +14,7 @@ import net.logstash.logback.composite.loggingevent.LoggingEventJsonProviders
 import net.logstash.logback.composite.loggingevent.LogstashMarkersJsonProvider
 import net.logstash.logback.composite.loggingevent.MdcJsonProvider
 import net.logstash.logback.composite.loggingevent.MessageJsonProvider
+import net.logstash.logback.composite.loggingevent.StackTraceJsonProvider
 import net.logstash.logback.composite.loggingevent.ThreadNameJsonProvider
 import net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder
 
@@ -69,6 +70,7 @@ appender("STASH_FILE", FileAppender) {
             threadName(ThreadNameJsonProvider)
             logLevel(LogLevelJsonProvider)
             logLevelValue(LogLevelValueJsonProvider)
+            stackTrace(StackTraceJsonProvider)
             mdc(MdcJsonProvider)
             logstashMarkers(LogstashMarkersJsonProvider)
         }
@@ -91,6 +93,7 @@ appender("STASH", LogstashTcpSocketAppender) {
             threadName(ThreadNameJsonProvider)
             logLevel(LogLevelJsonProvider)
             logLevelValue(LogLevelValueJsonProvider)
+            stackTrace(StackTraceJsonProvider)
             mdc(MdcJsonProvider)
             logstashMarkers(LogstashMarkersJsonProvider)
         }
