@@ -34,8 +34,8 @@
   (:import (clojure.lang ExceptionInfo)))
 
 (defn timing-data [start end]
-  {:start-ns start
-   :end-ns   end
+  {:start    (reports/nanos->epochms start)
+   :end      (reports/nanos->epochms end)
    :duration (- end start)})
 
 (defn op-data [op result]

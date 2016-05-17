@@ -24,7 +24,7 @@
 (defn nanos->epochms "convert a time from nanoTime to system ms" [nanos]
   (if nanos
     (if-let [rto util/*relative-time-origin*]
-      (long (/ (+ nanos nanos-offset rto) 1000000))
+      (long (quot (+ nanos nanos-offset rto) 1000000))
       (throw (ex-info "Can't calculate epoch times if relative-time-origin isn't set" {})))))
 
 (defn fix-ts [history-row]
