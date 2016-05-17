@@ -12,7 +12,7 @@
  :ssh {:username #or [#env USER "username"]
        :strict-host-key-checking :no }
 
- :time-limit 600
+ :time-limit 900
  :nemesis-delay 60
  :nemesis-duration 60
 
@@ -22,7 +22,7 @@
            :flavour :terraform
            :major-version 2
            :conf-file "mongod.conf.v263.terraform.yml"
-           :write-concern :acknowledged
+           :write-concern :majority
            :read-concern :default                           ; only valid option on mongod 2
 
            :install false

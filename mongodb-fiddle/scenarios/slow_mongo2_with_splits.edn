@@ -13,8 +13,9 @@
        :strict-host-key-checking :no }
 
  :time-limit 600
- :nemesis-delay 60
- :nemesis-duration 60
+ :nemesis-delay 30
+ :nemesis-duration 30
+ :concurrency 1
 
  :nemesis-kind :partition
  :test-kind :slow-append-ints
@@ -23,7 +24,7 @@
            :flavour :terraform
            :major-version 2
            :conf-file "mongod.conf.v263.terraform.yml"
-           :write-concern :acknowledged
+           :write-concern :majority
            :read-concern :default                           ; only valid option on mongod 2
 
            :install false

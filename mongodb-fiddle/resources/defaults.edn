@@ -33,9 +33,9 @@
            :read-with-find-and-modify false
            :protocol-version 1
            :client-options {
-                           :max-wait-time 60000
-                           :connect-timeout 60000
-                           :socket-timeout 60000
+                           :max-wait-time 20000
+                           :connect-timeout 5000
+                           :socket-timeout 10000
                            }
            }
  }

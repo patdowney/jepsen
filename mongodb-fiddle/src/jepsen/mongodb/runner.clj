@@ -49,6 +49,8 @@ It will take the file in resources/defaults.edn as defaults")
         (println usage)
         (System/exit 0)))
 
+
+
     (let [default-options (read-config "resources/defaults.edn")
           custom-options (read-config (first args))
           options (merge-with merge-overwrite default-options custom-options)

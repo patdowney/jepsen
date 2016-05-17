@@ -114,7 +114,7 @@
   (invoke! [this test op]
     ; Reads and adds are idempotent; we can treat their failure as an info.
     (with-timing-logs op
-      (util/with-errors op #{:read :add}
+      (util/with-errors op #{:read}
         (case (:f op)
           :read (if read-with-find-and-modify
                   (read-doc-wfam op coll id)

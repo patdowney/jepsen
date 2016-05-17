@@ -21,11 +21,14 @@
      (try
        ~@body
        (catch com.mongodb.MongoNotPrimaryException e#
+         (trace e# "Mongo Exception caught - turning into internal status")
          (assoc ~op :type :fail, :error :not-primary))
 
        ; A network error is indeterminate
        (catch com.mongodb.MongoSocketReadException e#
+         (trace e# "Mongo Exception caught - turning into internal status")
          (assoc ~op :type error-type# :error :socket-read))
 
        (catch com.mongodb.MongoSocketReadTimeoutException e#
+         (trace e# "Mongo Exception caught - turning into internal status")
          (assoc ~op :type error-type# :error :socket-read)))))

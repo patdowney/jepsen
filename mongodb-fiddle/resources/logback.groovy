@@ -28,17 +28,17 @@ import ch.qos.logback.classic.boolex.OnMarkerEvaluator
 
 appender("STDOUT", ConsoleAppender) {
     encoder(PatternLayoutEncoder) {
-        pattern = "%green(%d{HH:mm:ss.SSS}) [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
+        pattern = "%green(%d{HH:mm:ss.SSS}) [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n%ex{short}"
     }
 }
 
 appender("STDOUT_FILTERED", ConsoleAppender) { // special console appender which only lets logs through if >= the specified level
     filter(ThresholdFilter) {
-        level = INFO
+        level = WARN
     }
 
     encoder(PatternLayoutEncoder) {
-        pattern = "%green(%d{HH:mm:ss.SSS}) [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n"
+        pattern = "%green(%d{HH:mm:ss.SSS}) [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n%ex{short}"
     }
 }
 
@@ -49,7 +49,7 @@ appender("FILE", FileAppender) {
     file = printFile
     append = false
     encoder(PatternLayoutEncoder) {
-        pattern = "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [scenario=%X{scenario}, run=%X{run-id}] - %msg%n"
+        pattern = "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{72} - [scenario=%X{scenario}, run=%X{run-id}] - %msg%n%ex"
     }
 }
 
@@ -75,6 +75,11 @@ appender("STASH_FILE", FileAppender) {
     }
 }
 
+appender("STASH_FILE_ASYNC", AsyncAppender) {
+    appenderRef("STASH_FILE")
+    queueSize = 1000 // when queue is full, TRACE/DEBUG/INFO messages will be discarded
+}
+
 appender("STASH", LogstashTcpSocketAppender) {
     remoteHost = "logstash.us-east-1a.i.jpkot.net"
     port = 5515
@@ -95,10 +100,11 @@ appender("STASH", LogstashTcpSocketAppender) {
 
 // set global log level - filter by adding specific loggers, or adding filters to appenders (like STDOUT_FILTERED)
 //  actual log level is limited by what you specify here - if you set root to "INFO" you can't set anything else to DEBUG!
-root(TRACE, ["FILE_ASYNC","STDOUT_FILTERED"])
+root(TRACE, ["FILE_ASYNC","STDOUT_FILTERED","STASH"])
 
 // specify log levels, and optionally other appenders, for specific namespaces
 logger("jepsen", TRACE)
 logger("org.mongodb", WARN) // mongo is pretty verbose - trim it down
 logger("clj-ssh.ssh", WARN)
+// add STASH_FILE_ASYNC if you are having logstash proglems:
 logger("stash", INFO, ["STASH"], false)

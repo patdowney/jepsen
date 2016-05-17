@@ -5,6 +5,9 @@ processManagement:
 
 systemLog:
   destination: syslog
+  verbosity: 3
+  traceAllExceptions: true
+#  verbosity: 5 maximum
 #  logAppend: true
 #  path: /var/opt/mongodb/mongod.log
 
