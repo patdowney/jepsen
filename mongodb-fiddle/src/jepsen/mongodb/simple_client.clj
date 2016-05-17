@@ -199,12 +199,16 @@
 
               ;; Recovered records are those where we didn't know if the add
               ;; succeeded or not, but we found them in the final set.
-              recovered   (set/intersection final-read unsure)]
+              recovered   (set/intersection final-read unsure)
+
+              ;; unsure lost are those which we were unsure about and never actually were written
+              unsure-lost (set/difference unsure final-read)]
 
           {:valid?          (and (empty? lost) (empty? unexpected) (empty? dups) (empty? revived))
            :duplicates      dups
            :ok              (jutil/integer-interval-set-str ok)
            :lost            (jutil/integer-interval-set-str lost)
+           :unsure-lost     (jutil/integer-interval-set-str unsure-lost)
            :unexpected      (jutil/integer-interval-set-str unexpected)
            :recovered       (jutil/integer-interval-set-str recovered)
            :revived         (jutil/integer-interval-set-str revived)
@@ -212,6 +216,7 @@
            :revived-frac    (jutil/fraction (count revived) (count fails))
            :unexpected-frac (jutil/fraction (count unexpected) (count attempts))
            :lost-frac       (jutil/fraction (count lost) (count attempts))
+           :unsure-lost-frac (jutil/fraction (count unsure-lost) (count attempts))
            :recovered-frac  (jutil/fraction (count recovered) (count attempts))})))))
 
 
