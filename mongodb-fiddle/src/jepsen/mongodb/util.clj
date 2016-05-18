@@ -1,6 +1,9 @@
 (ns jepsen.mongodb.util
   (:require [clojure.tools.logging :refer [debug info warn trace spy]]
-            [clojure.string :as str]))
+            [jepsen.mongodb.reports :as reports]
+            [puppetlabs.structured-logging.core :refer [maplog]]
+            [clojure.string :as str]
+            [jepsen.util :as jutil]))
 
 (defn replace-all [str replacement-map]
   (info "replacing with" replacement-map)
@@ -32,3 +35,36 @@
        (catch com.mongodb.MongoSocketReadTimeoutException e#
          (trace e# "Mongo Exception caught - turning into internal status")
          (assoc ~op :type error-type# :error :socket-read)))))
+
+(defn timing-data [start end]
+  {:start    (reports/nanos->epochms start)
+   :end      (reports/nanos->epochms end)
+   :duration (- end start)})
+
+(defn op-data [op result]
+  (let [value-keyword (keyword (str "value-" (name (:f op))))]
+    {:process      (:process op)
+     :optype       (:type op)
+     :responsetype (:type result)
+     :f            (:f op)
+     value-keyword (:value op)
+     :error        (or (:error result) "none")}))
+
+(defmacro with-timing-logs [op & body]
+  `(try
+     (let [start# (:time ~op)
+           result# ~@body
+           end# (jutil/relative-time-nanos)]
+       (maplog [:stash :info] {:client-data (merge (timing-data start# end#)
+                                                   (op-data ~op result#))}
+               "client invoke")
+       result#)
+     (catch Exception e#
+       (warn e# "Uncaught exception seen during invoke! call")
+       (let [end# (jutil/relative-time-nanos)]
+         (maplog [:stash :warn]
+                 {:client-data (merge (timing-data (:time ~op) end#)
+                                      (op-data ~op {:type  "uncaught_exception"
+                                                    :error (.getClass e#)}))}
+                 (.getMessage e#)))
+       (throw e#))))

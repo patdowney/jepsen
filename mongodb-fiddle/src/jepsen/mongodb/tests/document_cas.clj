@@ -1,4 +1,4 @@
-(ns jepsen.mongodb.document-cas
+(ns jepsen.mongodb.tests.document-cas
   "Compare-and-set against a single document."
   (:refer-clojure :exclude [test])
   (:require [clojure [pprint :refer :all]

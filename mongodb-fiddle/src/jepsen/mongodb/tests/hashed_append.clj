@@ -1,5 +1,5 @@
-(ns jepsen.mongodb.simple-client
-  "Compare-and-set against a single document."
+(ns jepsen.mongodb.tests.hashed-append
+  "append integers to an array in a set of documents via hash key"
   (:refer-clojure :exclude [test])
   (:require [clojure [pprint :refer :all]
              [string :as str]]
@@ -31,54 +31,26 @@
             [jepsen.mongodb.mongo :as m]
             [clojure.set :as set]
             [puppetlabs.structured-logging.core :refer [maplog]])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import (clojure.lang ExceptionInfo Murmur3)))
 
-(defn timing-data [start end]
-  {:start    (reports/nanos->epochms start)
-   :end      (reports/nanos->epochms end)
-   :duration (- end start)})
+(defn hashfn [buckets ^Long value]
+  (mod (Murmur3/hashLong value) buckets))
 
-(defn op-data [op result]
-  (let [value-keyword (keyword (str "value-" (name (:f op))))]
-    {:process      (:process op)
-     :optype       (:type op)
-     :responsetype (:type result)
-     :f            (:f op)
-     value-keyword (:value op)
-     :error        (or (:error result) "none")}))
-
-(defmacro with-timing-logs [op & body]
-  `(try
-     (let [start# (:time ~op)
-           result# ~@body
-           end# (jutil/relative-time-nanos)]
-       (maplog [:stash :info] {:client-data (merge (timing-data start# end#)
-                                              (op-data ~op result#))}
-               "client invoke")
-       result#)
-     (catch Exception e#
-       (warn e# "Uncaught exception seen during invoke! call")
-       (let [end# (jutil/relative-time-nanos)]
-         (maplog [:stash :warn]
-                 {:client-data (merge (timing-data (:time ~op) end#)
-                                      (op-data ~op {:type  "uncaught_exception"
-                                                    :error (.getClass e#)}))}
-                 (.getMessage e#)))
-       (throw e#))))
-
-(defn read-doc [op coll id]
-  (let [read-result (m/find-one coll id)]
+(defn read-results [op coll buckets]
+  (let [read-results (map (partial m/find-one coll) (range buckets))
+        value (mapcat (comp seq :value) read-results)]
     (assoc op
       :type :ok
-      :value (:value read-result))))
+      :value value)))
 
-(defn read-doc-wfam [op coll id]
-  (let [read-result (m/read-with-find-and-modify coll id)]
+(defn read-results-wfam [op coll buckets]
+  (let [read-results (map (partial m/read-with-find-and-modify coll) (range buckets))
+        value (mapcat (comp seq :value) read-results)]
     (assoc op
       :type :ok
-      :value (:value read-result))))
+      :value value)))
 
-(defn add-int-to-doc [op coll id]
+(defn add-int-to-bucket [op coll id]
   (let [res (m/update! coll id
                        {:$push {:value (:value op)}})]
     (info :write-result (pr-str res))
@@ -91,12 +63,13 @@
 
 (defrecord Client [db-name
                    coll-name
-                   id
                    read-concern
                    write-concern
                    read-with-find-and-modify
+                   buckets
                    client
-                   coll]
+                   coll
+                   hasher]
   client/Client
   (setup! [this test node]
      (info "setting up client on " node )
@@ -105,41 +78,48 @@
                      (m/db db-name)
                      (m/collection coll-name)
                      (m/with-read-concern  read-concern)
-                     (m/with-write-concern write-concern))]
+                     (m/with-write-concern write-concern))
+          hasher (partial hashfn buckets)]
       ; Create initial document
-      (m/upsert! coll {:_id id, :value []})
+      (doseq [id (range buckets)]
+        (do
+          (info "initializing bucket " id)
+          (m/upsert! coll {:_id id, :value []})))
 
-      (assoc this :client client, :coll coll)))
+      (assoc this :client client, :coll coll, :buckets buckets, :hasher hasher)))
 
   (invoke! [this test op]
     ; Reads and adds are idempotent; we can treat their failure as an info.
-    (with-timing-logs op
+    (util/with-timing-logs op
       (util/with-errors op #{:read}
         (case (:f op)
           :read (if read-with-find-and-modify
-                  (read-doc-wfam op coll id)
-                  (read-doc op coll id))
+                  (read-results-wfam op coll buckets)
+                  (read-results op coll buckets))
 
-          :add (add-int-to-doc op coll id)
+          :add (add-int-to-bucket op coll (hasher (:value op)))
 
           ))))
   (teardown! [_ test]
     (.close ^java.io.Closeable client)))
 
+
+
 (defn client
-  "A client which implements a simple array that you can append to.
+  "A client which implements a set of arrays in buckets
 
   Options:
 
     :read-concern  e.g. :majority
     :write-concern e.g. :majority"
-  [opts]
+  [opts buckets]
   (Client. "jepsen"
            "cas"
-           0
            (:read-concern (:mongodb opts))
            (:write-concern (:mongodb opts))
            (:read-with-find-and-modify (:mongodb opts))
+           buckets
+           nil
            nil
            nil))
 
@@ -227,12 +207,13 @@
                 :value)
        (range)))
 
+(def default-buckets 10)
+
 (defn append-ints-test
   [opts]
   (test- "append-ints"
          (merge
-           {:client      (client opts)
-            ;:generator   (gen/clients (gen/each (gen/seq [{:type :invoke, :f :add, :value :a}])))
+           {:client      (client opts (or (:buckets opts) default-buckets))
             :generator   (gen/phases
                            (->> (infinite-adds)
                                 gen/seq
@@ -252,28 +233,3 @@
             }
            opts)))
 
-(defn slow-append-singlethreaded-test
-  [opts]
-  (test- "slow-append-ints"
-         (merge
-           {:client      (client opts)
-            :concurrency 1                                  ;this could be in config in theory, but why not hard-code?
-            :generator   (gen/phases
-                           (->> (infinite-adds)
-                                gen/seq
-                                (gen/delay 1)               ; 1 write per second
-                                (gen/nemesis
-                                  (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
-                                                   {:type :info :f :stop}
-                                                   (gen/sleep (:nemesis-duration opts))
-                                                   {:type :info :f :start}])))
-                                (gen/time-limit (:time-limit opts)))
-                           (->> {:type :invoke, :f :read, :value nil}
-                                gen/once
-                                gen/clients))
-            :checker     (checker/compose
-                           {:perf-dump (reports/perf-dump)
-                            :details   (check-sets)})
-            }
-           opts)
-         ))

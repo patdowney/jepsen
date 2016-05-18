@@ -7,9 +7,10 @@
             [clojure.tools.logging :refer :all]
             [clojure.string :as str]
             [jepsen.mongodb [core :as m]
-             [mongo :as client]
-             [document-cas :as dc]
-             [simple-client :as sc]]
+             [mongo :as client]]
+            [jepsen.mongodb.tests.document-cas :as dc]
+            [jepsen.mongodb.tests.append-ints :as append-ints]
+            [jepsen.mongodb.tests.hashed-append :as hashed-append]
             [jepsen.core :as jepsen]
             [aero.core :refer [read-config]]
             [jepsen.control :as control]
@@ -55,8 +56,9 @@ It will take the file in resources/defaults.edn as defaults")
           custom-options (read-config (first args))
           options (merge-with merge-overwrite default-options custom-options)
           the-test (case (:test-kind options)
-                   :append-ints sc/append-ints-test
-                   :slow-append-ints sc/slow-append-singlethreaded-test)]
+                     :append-ints append-ints/append-ints-test
+                     :slow-append-ints append-ints/slow-append-singlethreaded-test
+                     :hashed-append hashed-append/append-ints-test)]
 
       (with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
 

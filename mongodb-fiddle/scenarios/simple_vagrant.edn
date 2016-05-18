@@ -11,6 +11,8 @@
 
  :time-limit   10
 
+ :test-kind :hashed-append
+
  :nemesis-delay 2
  :nemesis-duration 1
  :nemesis-kind :noop
