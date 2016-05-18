@@ -82,9 +82,7 @@
           hasher (partial hashfn buckets)]
       ; Create initial document
       (doseq [id (range buckets)]
-        (do
-          (info "initializing bucket " id)
-          (m/upsert! coll {:_id id, :value []})))
+        (m/upsert! coll {:_id id, :value []}))
 
       (assoc this :client client, :coll coll, :buckets buckets, :hasher hasher)))
 
@@ -220,9 +218,9 @@
                                 (gen/stagger 1)
                                 (gen/nemesis
                                   (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
-                                                   {:type :info :f :stop}
+                                                   {:type :info :f :start}
                                                    (gen/sleep (:nemesis-duration opts))
-                                                   {:type :info :f :start}])))
+                                                   {:type :info :f :stop}])))
                                 (gen/time-limit (:time-limit opts)))
                            (->> {:type :invoke, :f :read, :value nil}
                                 gen/once
