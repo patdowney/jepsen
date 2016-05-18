@@ -1,37 +1,20 @@
 (ns jepsen.mongodb.tests.hashed-append
   "append integers to an array in a set of documents via hash key"
-  (:refer-clojure :exclude [test])
-  (:require [clojure [pprint :refer :all]
-             [string :as str]]
-            [clojure.java.io :as io]
+  (:require [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :refer [debug info warn spy]]
             [clojure.core.reducers :as r]
-            [jepsen [core :as jepsen]
+            [jepsen
              [util :as jutil :refer [meh timeout]]
-             [control :as c :refer [|]]
              [client :as client]
              [checker :as checker]
-             [independent :as independent]
-             [generator :as gen]
-             [nemesis :as nemesis]
-             [store :as store]
-             [report :as report]
-             [tests :as tests]]
-            [jepsen.control [net :as net]
-             [util :as net/util]]
+             [generator :as gen]]
             [jepsen.mongodb.reports :as reports]
             [jepsen.mongodb.util :as util]
             [jepsen.mongodb.base-tests :refer [test-]]
-            [jepsen.os.debian :as debian]
-            [jepsen.checker.timeline :as timeline]
-            [knossos.core :as knossos]
-            [knossos.model :as model]
             [knossos.op :as op]
-            [jepsen.mongodb.core :refer :all]
             [jepsen.mongodb.mongo :as m]
-            [clojure.set :as set]
-            [puppetlabs.structured-logging.core :refer [maplog]])
-  (:import (clojure.lang ExceptionInfo Murmur3)))
+            [clojure.set :as set])
+  (:import (clojure.lang  Murmur3)))
 
 (defn hashfn [buckets ^Long value]
   (mod (Murmur3/hashLong value) buckets))
