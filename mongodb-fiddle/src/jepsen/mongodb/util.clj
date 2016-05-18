@@ -41,22 +41,23 @@
    :end      (reports/nanos->epochms end)
    :duration (- end start)})
 
-(defn op-data [op result]
-  (let [value-keyword (keyword (str "value-" (name (:f op))))]
+(defn op-data [op no-values result]
+  (let [value-keyword (keyword (str "value-" (name (:f op))))
+        value (if no-values :removed (:value op))]
     {:process      (:process op)
      :optype       (:type op)
      :responsetype (:type result)
      :f            (:f op)
-     value-keyword (:value op)
+     value-keyword value
      :error        (or (:error result) "none")}))
 
-(defmacro with-timing-logs [op & body]
+(defmacro with-timing-logs-ex [op {:keys [no-values]} & body]
   `(try
      (let [start# (:time ~op)
            result# ~@body
            end# (jutil/relative-time-nanos)]
        (maplog [:stash :info] {:client-data (merge (timing-data start# end#)
-                                                   (op-data ~op result#))}
+                                                   (op-data ~op ~no-values result#))}
                "client invoke")
        result#)
      (catch Exception e#
@@ -64,7 +65,10 @@
        (let [end# (jutil/relative-time-nanos)]
          (maplog [:stash :warn]
                  {:client-data (merge (timing-data (:time ~op) end#)
-                                      (op-data ~op {:type  "uncaught_exception"
-                                                    :error (.getClass e#)}))}
+                                      (op-data ~op ~no-values {:type  "uncaught_exception"
+                                                               :error (.getClass e#)}))}
                  (.getMessage e#)))
        (throw e#))))
+
+(defmacro with-timing-logs [op & body]
+  `(with-timing-logs-ex ~op {:no-values false} ~@body))

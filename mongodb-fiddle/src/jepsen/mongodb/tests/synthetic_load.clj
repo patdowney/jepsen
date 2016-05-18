@@ -76,7 +76,7 @@
 
   (invoke! [this test op]
     ; Reads and adds are idempotent; we can treat their failure as an info.
-    (util/with-timing-logs op
+    (util/with-timing-logs-ex op {:no-values true}
       (util/with-errors op #{:read}
         (case (:f op)
           :add (add-person op coll (:value op))
