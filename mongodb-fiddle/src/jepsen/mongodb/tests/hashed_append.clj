@@ -112,7 +112,7 @@
     :write-concern e.g. :majority"
   [opts buckets]
   (Client. "jepsen"
-           "cas"
+           "hashed-append"
            (:read-concern (:mongodb opts))
            (:write-concern (:mongodb opts))
            (:read-with-find-and-modify (:mongodb opts))

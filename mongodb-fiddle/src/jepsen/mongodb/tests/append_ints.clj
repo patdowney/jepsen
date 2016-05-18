@@ -102,7 +102,7 @@
     :write-concern e.g. :majority"
   [opts]
   (Client. "jepsen"
-           "cas"
+           "append-ints"
            0
            (:read-concern (:mongodb opts))
            (:write-concern (:mongodb opts))
