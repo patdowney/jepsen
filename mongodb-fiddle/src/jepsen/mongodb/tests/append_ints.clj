@@ -185,7 +185,7 @@
             :generator   (gen/phases
                            (->> (infinite-adds)
                                 gen/seq
-                                (gen/stagger 1)
+                                (gen/stagger (:test-delay-secs opts))
                                 (gen/nemesis
                                   (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
                                                    {:type :info :f :start}
@@ -206,11 +206,11 @@
   (test- "slow-append-ints"
          (merge
            {:client      (client opts)
-            :concurrency 1                                  ;this could be in config in theory, but why not hard-code?
+            ; concurrency needs to be set in config.  TODO: make this overridable?
             :generator   (gen/phases
                            (->> (infinite-adds)
                                 gen/seq
-                                (gen/delay 1)               ; 1 write per second
+                                (gen/delay (:test-delay-secs opts))               ; delay not stagger, so you can drip-feed it
                                 (gen/nemesis
                                   (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
                                                    {:type :info :f :stop}

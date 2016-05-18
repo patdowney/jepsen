@@ -9,6 +9,8 @@
 
  :concurrency 100
 
+ :test-delay-secs 1                                              ; average delay between operations per thread (depends a bit on test)
+
  :os-flavour :debian                                                ; options :debian or :null
 
  :nemesis-kind :noop                                                ; no nemeses by default

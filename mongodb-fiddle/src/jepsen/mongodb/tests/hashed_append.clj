@@ -198,7 +198,7 @@
             :generator   (gen/phases
                            (->> (infinite-adds)
                                 gen/seq
-                                (gen/stagger 1)
+                                (gen/stagger (:test-delay-secs opts))
                                 (gen/nemesis
                                   (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
                                                    {:type :info :f :start}

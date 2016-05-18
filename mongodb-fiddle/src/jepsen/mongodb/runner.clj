@@ -11,6 +11,7 @@
             [jepsen.mongodb.tests.document-cas :as dc]
             [jepsen.mongodb.tests.append-ints :as append-ints]
             [jepsen.mongodb.tests.hashed-append :as hashed-append]
+            [jepsen.mongodb.tests.synthetic-load :as synthetic-load]
             [jepsen.core :as jepsen]
             [aero.core :refer [read-config]]
             [jepsen.control :as control]
@@ -58,7 +59,8 @@ It will take the file in resources/defaults.edn as defaults")
           the-test (case (:test-kind options)
                      :append-ints append-ints/append-ints-test
                      :slow-append-ints append-ints/slow-append-singlethreaded-test
-                     :hashed-append hashed-append/append-ints-test)]
+                     :hashed-append hashed-append/append-ints-test
+                     :people-test synthetic-load/people-test)]
 
       (with-logging-context {:run-id (random-string 10) :scenario (:scenario options)}
 

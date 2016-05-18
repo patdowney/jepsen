@@ -12,7 +12,8 @@
                  [org.mongodb/mongodb-driver "3.2.2"]
                  [org.codehaus.groovy/groovy-all "2.4.6"]
                  [aero "1.0.0-beta2"]
-                 [cheshire "5.6.1"]]
+                 [cheshire "5.6.1"]
+                 [faker "0.2.2"]]
   :jvm-opts ["-Xmx16g"
              "-XX:+UseConcMarkSweepGC"
              "-XX:+UseParNewGC"

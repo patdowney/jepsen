@@ -11,9 +11,9 @@
 
  :time-limit   10
 
- :test-kind :hashed-append
+ :test-kind :people-test
 
- :nemesis-delay 2
+ :nemesis-delay 3
  :nemesis-duration 1
  :nemesis-kind :noop
 
