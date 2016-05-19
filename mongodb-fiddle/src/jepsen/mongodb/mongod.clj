@@ -141,4 +141,5 @@
 
     (teardown! [_ test node]
       (trace "teardown! on " node)
-      (wipe! node mongodb-config))))
+      (if (:destroy-at-end mongodb-config)
+        (wipe! node mongodb-config)))))
