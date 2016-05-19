@@ -18,7 +18,8 @@
             [jepsen.mongodb.log-context :refer [with-logging-context]]
             [jepsen.generator :as gen]
             [jepsen.mongodb.util :as util]
-            [jepsen.nemesis :as nemesis]))
+            [jepsen.nemesis :as nemesis])
+  (:import (org.slf4j LoggerFactory)))
 
 (defn random-string [length]
   (let [ascii-codes (concat (range 48 58) (range 66 91) (range 97 123))]
@@ -44,6 +45,11 @@ It will take the file in resources/defaults.edn as defaults")
   (if (and (associative? v1) (associative? v2))
     (merge-with merge-overwrite v1 v2)
     v2))
+
+(defn shutdown-logging []
+  (println "shutting down logger")
+  (.stop (LoggerFactory/getILoggerFactory))
+  (println "fin."))
 
 (defn -main
   [& args]
@@ -85,8 +91,13 @@ It will take the file in resources/defaults.edn as defaults")
         ; Run test
         (binding [control/*trace* (:trace-ssh options)]
           (let [t (jepsen/run! (the-test options the-delayer the-nemesis))]
+            (warn "valid:" (:valid? (:results t)))
+            (shutdown-logging)
             (System/exit (if (:valid? (:results t)) 0 1))))))
+
+
 
     (catch Throwable t
       (fatal t "Oh jeez, I'm sorry, Jepsen broke. Here's why:")
+      (shutdown-logging)
       (System/exit 255))))

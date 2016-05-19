@@ -56,7 +56,7 @@ appender("FILE", FileAppender) {
 
 appender("FILE_ASYNC", AsyncAppender) {
     appenderRef("FILE")
-    queueSize = 1000 // when queue is full, TRACE/DEBUG/INFO messages will be discarded
+    queueSize = 10000 // when queue is full, TRACE/DEBUG/INFO messages will be discarded
 }
 
 appender("STASH_FILE", FileAppender) {
@@ -79,12 +79,16 @@ appender("STASH_FILE", FileAppender) {
 
 appender("STASH_FILE_ASYNC", AsyncAppender) {
     appenderRef("STASH_FILE")
-    queueSize = 1000 // when queue is full, TRACE/DEBUG/INFO messages will be discarded
+    queueSize = 10000 // when queue is 80% full, TRACE/DEBUG/INFO messages will be discarded
+    maxFlushTime = 60000 // ms before this will give up appending to the appender
 }
 
 appender("STASH", LogstashTcpSocketAppender) {
     remoteHost = "logstash.us-east-1a.i.jpkot.net"
     port = 5515
+    keepAliveDuration = "10 seconds"
+    reconnectionDelay = "1 second"
+    timeZone="UTC"
     encoder(LoggingEventCompositeJsonEncoder) {
         providers(LoggingEventJsonProviders) {
             timestamp(LoggingEventFormattedTimestampJsonProvider)
