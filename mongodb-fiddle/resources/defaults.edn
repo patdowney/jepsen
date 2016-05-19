@@ -9,6 +9,7 @@
 
  :concurrency 100
 
+ :delayer :stagger
  :test-delay-secs 1                                              ; average delay between operations per thread (depends a bit on test)
 
  :os-flavour :debian                                                ; options :debian or :null

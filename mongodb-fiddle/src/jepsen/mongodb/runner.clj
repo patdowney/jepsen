@@ -15,7 +15,10 @@
             [jepsen.core :as jepsen]
             [aero.core :refer [read-config]]
             [jepsen.control :as control]
-            [jepsen.mongodb.log-context :refer [with-logging-context]]))
+            [jepsen.mongodb.log-context :refer [with-logging-context]]
+            [jepsen.generator :as gen]
+            [jepsen.mongodb.util :as util]
+            [jepsen.nemesis :as nemesis]))
 
 (defn random-string [length]
   (let [ascii-codes (concat (range 48 58) (range 66 91) (range 97 123))]
@@ -56,9 +59,22 @@ It will take the file in resources/defaults.edn as defaults")
     (let [default-options (read-config "resources/defaults.edn")
           custom-options (read-config (first args))
           options (merge-with merge-overwrite default-options custom-options)
+          the-delayer (case (:delayer options)
+                        :stagger (partial gen/stagger (:test-delay-secs options))
+                        :constant (partial util/duration-ms (* 1000 (:test-delay-secs options)))
+                        :ramp (do
+                                (assert (:ramp-initial-ms options))
+                                (assert (:ramp-final-ms options))
+                                (assert (:ramp-duration options))
+                                (partial util/ramp
+                                         (:ramp-initial-ms options)
+                                         (:ramp-final-ms options)
+                                         (* 1000 (:ramp-duration options)))))
+          the-nemesis (case (:nemesis-kind options)
+                        :partition (nemesis/partition-random-halves)
+                        :noop nemesis/noop)
           the-test (case (:test-kind options)
                      :append-ints append-ints/append-ints-test
-                     :slow-append-ints append-ints/slow-append-singlethreaded-test
                      :hashed-append hashed-append/append-ints-test
                      :people-test synthetic-load/people-test)]
 
@@ -68,7 +84,7 @@ It will take the file in resources/defaults.edn as defaults")
 
         ; Run test
         (binding [control/*trace* (:trace-ssh options)]
-          (let [t (jepsen/run! (the-test options))]
+          (let [t (jepsen/run! (the-test options the-delayer the-nemesis))]
             (System/exit (if (:valid? (:results t)) 0 1))))))
 
     (catch Throwable t

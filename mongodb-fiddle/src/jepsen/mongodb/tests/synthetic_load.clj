@@ -106,27 +106,27 @@
                  :value (random-person id)})
        (range)))
 
+
+
 (defn people-test
-  [opts]
+  [opts the-delayer the-nemesis]
   (test- "people-test"
          (merge
-           {:client      (client opts)
-            :generator   (gen/phases
-                           (->> (infinite-adds)
-                                gen/seq
-                                (gen/stagger (:test-delay-secs opts))
-                                (gen/nemesis
-                                  (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
-                                                   {:type :info :f :start}
-                                                   (gen/sleep (:nemesis-duration opts))
-                                                   {:type :info :f :stop}])))
-                                (gen/time-limit (:time-limit opts)))
-                           ; any read phase goes here
-                           )
-            :checker     (checker/compose
-                           {:perf-dump (reports/perf-dump)
-                            ; any checker goes here
-                            })
+           {:client    (client opts)
+            :generator (gen/phases
+                         (->> (infinite-adds)
+                              gen/seq
+                              the-delayer
+                              (gen/nemesis
+                                (util/cyclic-nemesis-gen opts))
+                              (gen/time-limit (:time-limit opts)))
+                         ; any read phase goes here
+                         )
+            :checker   (checker/compose
+                         {:perf-dump (reports/perf-dump)
+                          ; any checker goes here
+                          })
+            :nemesis the-nemesis
             }
            opts)))
 

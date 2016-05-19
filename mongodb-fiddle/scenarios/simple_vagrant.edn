@@ -9,13 +9,19 @@
 
  :ssh          {:username #or [#env SSH_USER "root"] :password "root"}
 
- :time-limit   10
+ :time-limit   20
+ :concurrency 10
 
  :test-kind :people-test
 
+ :delayer :ramp
  :nemesis-delay 3
  :nemesis-duration 1
  :nemesis-kind :noop
+
+ :ramp-initial-ms 1000
+ :ramp-final-ms 100
+ :ramp-duration 10
 
  :mongodb      {
                 :install   false

@@ -191,19 +191,16 @@
 (def default-buckets 10)
 
 (defn append-ints-test
-  [opts]
+  [opts the-delayer the-nemesis]
   (test- "append-ints"
          (merge
            {:client      (client opts (or (:buckets opts) default-buckets))
             :generator   (gen/phases
                            (->> (infinite-adds)
                                 gen/seq
-                                (gen/stagger (:test-delay-secs opts))
+                                the-delayer
                                 (gen/nemesis
-                                  (gen/seq (cycle [(gen/sleep (:nemesis-delay opts))
-                                                   {:type :info :f :start}
-                                                   (gen/sleep (:nemesis-duration opts))
-                                                   {:type :info :f :stop}])))
+                                  (util/cyclic-nemesis-gen opts))
                                 (gen/time-limit (:time-limit opts)))
                            (->> {:type :invoke, :f :read, :value nil}
                                 gen/once
@@ -211,6 +208,7 @@
             :checker     (checker/compose
                            {:perf-dump (reports/perf-dump)
                             :details   (check-sets)})
+            :nemesis the-nemesis
             }
            opts)))
 

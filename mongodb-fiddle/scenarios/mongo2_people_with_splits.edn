@@ -10,11 +10,15 @@
        :strict-host-key-checking :no }
 
  :time-limit 900
- :nemesis-delay 180
+ :nemesis-delay 300
  :nemesis-duration 60
 
  :nemesis-kind :partition
  :test-kind :people-test
+
+ :ramp-initial-ms 5000
+ :ramp-final-ms 100
+ :ramp-duration 200
 
  :mongodb {
            :flavour :terraform

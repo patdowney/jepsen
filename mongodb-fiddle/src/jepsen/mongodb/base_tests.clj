@@ -32,8 +32,5 @@
             :debian debian/os
             :null null_os/null_os)
       :db (mongod/db (:mongodb opts))
-      :net iptables-old
-      :nemesis (case (:nemesis-kind opts)
-                 :partition (nemesis/partition-random-halves)
-                 :noop nemesis/noop))
+      :net iptables-old)                                    ; TODO - make this configurable, if/when we have different os's
     opts))
