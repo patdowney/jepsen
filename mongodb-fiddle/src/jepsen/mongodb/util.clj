@@ -43,7 +43,7 @@
 
 (defn op-data [op no-values result]
   (let [value-keyword (keyword (str "value-" (name (:f op))))
-        value (if no-values :removed (:value op))]
+        value (if no-values nil (:value op))]
     {:process      (:process op)
      :optype       (:type op)
      :responsetype (:type result)
