@@ -10,15 +10,17 @@
  :ssh          {:username #or [#env SSH_USER "root"] :password "root"}
 
  :time-limit   20
- :concurrency 10
+ :concurrency 105
+ :read-threads 5
 
- :test-kind :people-test
+ :test-kind :hashed-append
 
- :delayer :ramp
+ :nemesis-kind :noop
  :nemesis-delay 3
  :nemesis-duration 1
- :nemesis-kind :noop
 
+ :delayer :constant
+ :test-delay-secs 1
  :ramp-initial-ms 1000
  :ramp-final-ms 100
  :ramp-duration 10

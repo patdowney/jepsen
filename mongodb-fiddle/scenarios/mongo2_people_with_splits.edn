@@ -16,6 +16,7 @@
  :nemesis-kind :partition
  :test-kind :people-test
 
+ :delayer :ramp
  :ramp-initial-ms 5000
  :ramp-final-ms 100
  :ramp-duration 200

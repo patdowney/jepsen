@@ -33,6 +33,14 @@
       :type :ok
       :value value)))
 
+(defn read-random [op coll buckets]
+  (let [bucket (rand-int buckets)
+        result (m/find-one coll bucket)
+        _ (info :read-random result)]
+    (assoc op
+      :type :ok
+      :value (:value result))))
+
 (defn add-int-to-bucket [op coll id]
   (let [res (m/update! coll id
                        {:$push {:value (:value op)}})]
@@ -74,9 +82,11 @@
     (util/with-timing-logs op
       (util/with-errors op #{:read}
         (case (:f op)
-          :read (if read-with-find-and-modify
+          :read-final (if read-with-find-and-modify
                   (read-results-wfam op coll buckets)
                   (read-results op coll buckets))
+
+          :read (read-random op coll buckets)
 
           :add (add-int-to-bucket op coll (hasher (:value op)))
 
@@ -134,7 +144,7 @@
                         (into #{}))
             final-read-l (->> history
                               (r/filter op/ok?)
-                              (r/filter #(= :read (:f %)))
+                              (r/filter #(= :read-final (:f %)))
                               (r/map :value)
                               (reduce (fn [_ x] x) nil))]
 
@@ -190,6 +200,10 @@
 
 (def default-buckets 10)
 
+(defn r [_ _]
+  (info "reading!")
+  {:type :invoke :f :read})
+
 (defn append-ints-test
   [opts the-delayer the-nemesis]
   (test- "append-ints"
@@ -198,11 +212,12 @@
             :generator   (gen/phases
                            (->> (infinite-adds)
                                 gen/seq
+                                (gen/reserve (or (:read-threads opts) 5) r) ; 5 threads for reading (or override in config)
                                 the-delayer
                                 (gen/nemesis
                                   (util/cyclic-nemesis-gen opts))
                                 (gen/time-limit (:time-limit opts)))
-                           (->> {:type :invoke, :f :read, :value nil}
+                           (->> {:type :invoke, :f :read-final, :value nil}
                                 gen/once
                                 gen/clients))
             :checker     (checker/compose

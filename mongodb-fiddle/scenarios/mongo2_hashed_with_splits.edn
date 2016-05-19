@@ -15,9 +15,17 @@
  :test-kind :hashed-append
  :buckets 1000
 
+ :concurrency 105
+ :read-threads 5
+
  :time-limit 900
- :nemesis-delay 60
+ :nemesis-delay 300
  :nemesis-duration 60
+
+ :delayer :ramp
+ :ramp-initial-ms 5000
+ :ramp-final-ms 100
+ :ramp-duration 200
 
  :nemesis-kind :partition
 
