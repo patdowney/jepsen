@@ -4,6 +4,7 @@ import ch.qos.logback.core.ConsoleAppender
 import ch.qos.logback.core.FileAppender
 import ch.qos.logback.classic.AsyncAppender
 import ch.qos.logback.core.rolling.RollingFileAppender
+import ch.qos.logback.core.util.Duration
 import net.logstash.logback.appender.LogstashTcpSocketAppender
 import net.logstash.logback.composite.JsonProviders
 import net.logstash.logback.composite.loggingevent.LogLevelJsonProvider
@@ -26,6 +27,8 @@ import static ch.qos.logback.core.spi.FilterReply.DENY
 import static ch.qos.logback.core.spi.FilterReply.NEUTRAL
 import ch.qos.logback.core.filter.EvaluatorFilter
 import ch.qos.logback.classic.boolex.OnMarkerEvaluator
+
+import static ch.qos.logback.core.util.Duration.valueOf
 
 appender("STDOUT", ConsoleAppender) {
     encoder(PatternLayoutEncoder) {
@@ -86,9 +89,8 @@ appender("STASH_FILE_ASYNC", AsyncAppender) {
 appender("STASH", LogstashTcpSocketAppender) {
     remoteHost = "logstash.us-east-1a.i.jpkot.net"
     port = 5515
-    keepAliveDuration = "10 seconds"
-    reconnectionDelay = "1 second"
-    timeZone="UTC"
+    keepAliveDuration = valueOf("10 seconds")
+    reconnectionDelay = valueOf("1 second")
     encoder(LoggingEventCompositeJsonEncoder) {
         providers(LoggingEventJsonProviders) {
             timestamp(LoggingEventFormattedTimestampJsonProvider)
